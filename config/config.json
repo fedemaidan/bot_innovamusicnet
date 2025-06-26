@@ -1,0 +1,27 @@
+{
+"development": {
+    "username": "sorby_development",
+    "password": "sorby_development",
+    "database": "MGDB",
+    "host": "host.docker.internal",
+    "port": 5440,
+    "dialect": "postgres"
+  },
+  "test": {
+    "username": "root",
+    "password": null,
+    "database": "database_test",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "use_env_variable": "DATABASE_URL",
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
+  }
+}
