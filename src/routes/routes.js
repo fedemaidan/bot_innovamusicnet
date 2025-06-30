@@ -162,7 +162,7 @@ router.get("/precio-minimo-query", async (req, res) => {
 
 //194252705391 iphone 13 128gb midnight
 router.get("/precio-minimo-gtin", async (req, res) => {
-  const { gtin, condition, international_delivery_mode } = req.query;
+  const { gtin, zip_code = "1100" } = req.query;
   // international_delivery_mode: "me2" -> entrega internacional || "me2_plus" -> entrega internacional premium
 
   // condition: "new" -> nuevo || "used" -> usado || "not_specified" -> no especificado
@@ -174,6 +174,7 @@ router.get("/precio-minimo-gtin", async (req, res) => {
   try {
     const api = MercadoLibreAPI.getInstance();
     const resultado = await api.getProductPriceByGTIN(gtin);
+    console.log("resultadoAPI", resultado);
 
     if (!resultado.results || resultado.results.length === 0) {
       return res.json({
@@ -182,55 +183,79 @@ router.get("/precio-minimo-gtin", async (req, res) => {
       });
     }
 
-    let resultadosFiltrados = resultado.results;
+    resultado.results.sort((a, b) => a.price - b.price);
 
-    if (condition) {
-      resultadosFiltrados = resultadosFiltrados.filter(
-        (item) => item.condition === condition
-      );
+    let itemConPrecioMinimo = null;
+    let sellerReputation = null;
+
+    // Buscar el primer item con precio mínimo que cumpla con la reputación 5_green
+    for (const item of resultado.results) {
+      try {
+        console.log("itemResult", item);
+        const reputation = await api.getSellerReputation(item.seller_id);
+        console.log("sellerReputation", reputation);
+        if (
+          reputation.seller_reputation &&
+          reputation.seller_reputation.level_id === "5_green"
+        ) {
+          itemConPrecioMinimo = item;
+          sellerReputation = reputation;
+          break;
+        }
+      } catch (error) {
+        console.log(
+          `Error obteniendo reputación del vendedor ${item.seller_id}:`,
+          error.message
+        );
+        continue;
+      }
     }
 
-    if (international_delivery_mode) {
-      resultadosFiltrados = resultadosFiltrados.filter(
-        (item) =>
-          item.international_delivery_mode === international_delivery_mode
-      );
-    }
-
-    if (resultadosFiltrados.length === 0) {
+    if (!itemConPrecioMinimo) {
       return res.json({
-        precioMinimo: null,
-        mensaje: "No se encontraron productos con los filtros especificados",
-        filtrosAplicados: {
-          condition,
-          international_delivery_mode,
-        },
+        mensaje:
+          "No se encontraron productos con vendedores de reputación 5_green",
       });
     }
 
-    const itemConPrecioMinimo = resultadosFiltrados.reduce((min, item) =>
-      item.price < min.price ? item : min
-    );
-
     const precioMinimo = itemConPrecioMinimo.price;
-    const itemId = itemConPrecioMinimo.id;
+    const itemId = itemConPrecioMinimo.item_id;
+
+    let shippingOptions = null;
+    try {
+      const shippingResponse = await api.getShippingOptions(itemId, zip_code);
+      shippingOptions = shippingResponse;
+    } catch (error) {
+      console.log(
+        `Error obteniendo opciones de envío para item ${itemId}:`,
+        error.message
+      );
+      shippingOptions = {
+        error: "No se pudieron obtener las opciones de envío",
+      };
+    }
 
     res.json({
       precioMinimo,
       gtin,
       itemId,
       itemDetail: itemConPrecioMinimo,
-      filtrosAplicados: {
-        condition,
-        international_delivery_mode,
-      },
+      sellerReputation,
+      shippingOptions,
+      productDetails: resultado.productDetails,
       totalResultados: resultado.results.length,
-      resultadosFiltrados: resultadosFiltrados.length,
+      resultadosFiltrados: resultado.results.length,
     });
   } catch (error) {
     console.error("Error al obtener precio mínimo por GTIN:", error);
     res.status(500).json({ error: "Error al obtener precio mínimo por GTIN" });
   }
+});
+
+router.get("/test", async (req, res) => {
+  const api = MercadoLibreAPI.getInstance();
+  const response = await api.test();
+  res.json(response);
 });
 
 module.exports = router;

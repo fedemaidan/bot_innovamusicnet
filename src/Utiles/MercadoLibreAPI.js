@@ -175,6 +175,7 @@ class MercadoLibreAPI {
       const response = await this.axiosInstance.get("/products/search", {
         params,
       });
+      console.log("productsResponse", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -185,12 +186,47 @@ class MercadoLibreAPI {
     }
   }
 
-  async getItem(productId) {
+  async getItem(productId, { getAll = true, limit = 50 } = {}) {
     try {
-      const response = await this.axiosInstance.get(
-        `/products/${productId}/items`
-      );
-      return response.data;
+      if (!getAll) {
+        const response = await this.axiosInstance.get(
+          `/products/${productId}/items`
+        );
+        return response.data;
+      }
+
+      let allResults = [];
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await this.axiosInstance.get(
+          `/products/${productId}/items`,
+          {
+            params: { limit, offset },
+          }
+        );
+
+        const data = response.data;
+        allResults = allResults.concat(data.results || []);
+
+        // Verificar si hay más páginas
+        if (data.paging && data.paging.total > offset + data.results.length) {
+          offset += limit;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return {
+        paging: {
+          total: allResults.length,
+          offset: 0,
+          limit: allResults.length,
+        },
+        results: allResults,
+      };
     } catch (error) {
       console.error("Error getting item:", error);
       throw error;
@@ -202,6 +238,7 @@ class MercadoLibreAPI {
       const response = await this.axiosInstance.get(
         `/suggestions/items/${itemId}/details`
       );
+      return response.data;
     } catch (error) {
       console.error(`Error getting suggested price for item ${itemId}:`, error);
       throw error;
@@ -230,15 +267,15 @@ class MercadoLibreAPI {
     }
   }
 
-  async getItems(productsIds) {
+  async getItems(productsIds, { getAll = true } = {}) {
     console.log("productsIds", productsIds);
     let results = [];
     try {
       const promises = productsIds.map(async (productId, index) => {
         try {
           await new Promise((resolve) => setTimeout(resolve, index * 50));
-          const response = await this.getItem(productId);
-          return response.results || [];
+          const response = await this.getItem(productId, { getAll });
+          return response.results || response;
         } catch (error) {
           console.log(`Error getting item ${productId}:`, {
             message: error.response?.data?.message || error.message,
@@ -271,7 +308,6 @@ class MercadoLibreAPI {
         limit,
         sort,
       });
-      console.log("productsResponse", productsResponse);
 
       if (!productsResponse.results || productsResponse.results.length === 0) {
         return { query, results: [], message: "No se encontraron productos" };
@@ -311,7 +347,6 @@ class MercadoLibreAPI {
           sort,
         }
       );
-      console.log("productsResponse", productsResponse);
 
       if (!productsResponse.results || productsResponse.results.length === 0) {
         return {
@@ -322,16 +357,15 @@ class MercadoLibreAPI {
       }
 
       const productIds = productsResponse.results.map((product) => product.id);
-      console.log("productIds", productIds);
 
       const itemsResponse = await this.getItems(productIds);
-      console.log("itemsResponse", itemsResponse);
 
       return {
         product_identifier,
         productsFound: productsResponse.results.length,
         itemsFound: itemsResponse.length,
         results: itemsResponse,
+        productDetails: productsResponse.results,
       };
     } catch (error) {
       console.error(
@@ -362,6 +396,63 @@ class MercadoLibreAPI {
       return response.data;
     } catch (error) {
       console.error("Error getting item detail:", error);
+      throw error;
+    }
+  }
+
+  //id de items
+  //MLA2029153606
+  //MLA1506141949
+  //MLA2028449240
+
+  async getSellerReputation(sellerId) {
+    //   "seller_reputation": {
+    //     "level_id": "5_green", -> User reputation level described in thermometer numbering and color.
+    //     "power_seller_status": null,
+    //     "transactions": {
+    //         "period": "historic",
+    //         "total": 20493
+    //     }
+    // },
+    try {
+      const response = await this.axiosInstance.get(`users/${sellerId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error testing API:", error);
+      throw error;
+    }
+  }
+
+  async getShippingOptions(itemId, zipCode = "1100") {
+    // destination: {
+    //   zip_code: '1100',
+    //   city: { id: null, name: null },
+    //   state: { id: 'AR-C', name: 'Capital Federal' },
+    //   country: { id: 'AR', name: 'Argentina' }
+    // },
+    // options: [
+    //   {
+    //     id: 3164054109,
+    //     option_hash: '66837f7db16f28a7fb68dcb7d1e1ade6',
+    //     name: 'Prioritario a domicilio',
+    //     currency_id: 'ARS',
+    //     base_cost: 6103.99,
+    //     cost: 0,
+    //     list_cost: 5238.49,
+    //     display: 'recommended',
+    //     shipping_method_id: 510445,
+    //     shipping_method_type: 'next_day', 'express', 'three_days', 'standard'
+    //     shipping_option_type: 'address',
+    //     estimated_delivery_time: [Object],
+    //     discount: [Object]
+    //   },
+    try {
+      const response = await this.axiosInstance.get(
+        `/items/${itemId}/shipping_options?zip_code=${zipCode}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error getting shipping options:", error);
       throw error;
     }
   }

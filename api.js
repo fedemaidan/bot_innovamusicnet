@@ -17,7 +17,7 @@ const initMercadoLibreAPI = async () => {
 
 module.exports = async function startApi() {
   const app = express();
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3009;
 
   // Inicializar MercadoLibre API
   await initMercadoLibreAPI();
