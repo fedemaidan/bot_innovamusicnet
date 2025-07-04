@@ -1,5 +1,6 @@
 const express = require("express");
 const { MercadoLibreAPI } = require("../Utiles/MercadoLibreAPI");
+const { scrapeMeliPrices } = require("../Utiles/webScrapping");
 
 const router = express.Router();
 
@@ -162,10 +163,8 @@ router.get("/precio-minimo-query", async (req, res) => {
 
 //194252705391 iphone 13 128gb midnight
 router.get("/precio-minimo-gtin", async (req, res) => {
-  const { gtin, zip_code = "1100" } = req.query;
-  // international_delivery_mode: "me2" -> entrega internacional || "me2_plus" -> entrega internacional premium
-
-  // condition: "new" -> nuevo || "used" -> usado || "not_specified" -> no especificado
+  const { gtin, zip_code = "1100", include_global = false } = req.query;
+  // include_global: true -> busca en CBT (Global Selling) | false -> busca en MLA (Argentina local)
 
   if (!gtin) {
     return res.status(400).json({ error: "gtin es requerido" });
@@ -173,8 +172,7 @@ router.get("/precio-minimo-gtin", async (req, res) => {
 
   try {
     const api = MercadoLibreAPI.getInstance();
-    const resultado = await api.getProductPriceByGTIN(gtin);
-    console.log("resultadoAPI", resultado);
+    const resultado = await api.getProductPriceByGTIN(gtin, { include_global });
 
     if (!resultado.results || resultado.results.length === 0) {
       return res.json({
@@ -245,6 +243,8 @@ router.get("/precio-minimo-gtin", async (req, res) => {
       productDetails: resultado.productDetails,
       totalResultados: resultado.results.length,
       resultadosFiltrados: resultado.results.length,
+      include_global,
+      site_id: include_global ? "CBT" : "MLA",
     });
   } catch (error) {
     console.error("Error al obtener precio mínimo por GTIN:", error);
@@ -252,10 +252,67 @@ router.get("/precio-minimo-gtin", async (req, res) => {
   }
 });
 
+router.get("/test1", async (req, res) => {
+  const api = MercadoLibreAPI.getInstance();
+  const response = await api.getSellerReputation("2153421531");
+
+  const sellerItems = await api.getSellerItems("2153421531");
+
+  res.json({ sellerItems, sellerReputation: response });
+});
+
+router.get("/buscar-todos-vendedores", async (req, res) => {
+  const { q, include_global = false } = req.query;
+
+  if (!q) {
+    return res.status(400).json({ error: "q es requerido" });
+  }
+
+  try {
+    const api = MercadoLibreAPI.getInstance();
+
+    // Usar el endpoint de búsqueda del sitio que debería traer todos los vendedores
+    const resultado = await api.searchProductsBySite(q, { include_global });
+
+    res.json({
+      query: q,
+      include_global,
+      site_id: include_global ? "CBT" : "MLA",
+      totalResults: resultado.paging?.total || 0,
+      results: resultado.results || [],
+    });
+  } catch (error) {
+    console.error("Error al buscar productos:", error);
+    res.status(500).json({ error: "Error al buscar productos" });
+  }
+});
+
 router.get("/test", async (req, res) => {
   const api = MercadoLibreAPI.getInstance();
-  const response = await api.test();
+  const response = await api.getProductDetail("MLA24142523");
+
   res.json(response);
+});
+
+router.get("/test-scraping", async (req, res) => {
+  const { gtin } = req.query;
+
+  if (!gtin) {
+    return res.status(400).json({ error: "gtin es requerido" });
+  }
+
+  const prices = await scrapeMeliPrices([gtin]);
+  console.log("prices", prices);
+  const results = [];
+  prices[0].results.forEach((price) => {
+    results.push({
+      title: price.title,
+      price: price.price,
+      link: price.link,
+      productId: price.productId,
+    });
+  });
+  res.json(results);
 });
 
 module.exports = router;

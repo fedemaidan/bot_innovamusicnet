@@ -135,12 +135,17 @@ class MercadoLibreAPI {
     }
   }
 
-  async searchProducts(query, { limit = 3, sort = null } = {}) {
+  async searchProducts(
+    query,
+    { limit = 3, sort = null, include_global = false } = {}
+  ) {
     try {
       const params = {
         status: "active",
-        site_id: "MLA",
+        site_id: include_global ? "CBT" : "MLA",
         q: query,
+        official_store_id: null,
+        seller_type: "all",
       };
 
       if (sort) params.sort = sort;
@@ -148,6 +153,7 @@ class MercadoLibreAPI {
       const response = await this.axiosInstance.get(`/products/search`, {
         params,
       });
+      console.log("productsResponse", response.data);
       return response.data;
     } catch (error) {
       console.error(
@@ -161,13 +167,16 @@ class MercadoLibreAPI {
   //GTIN engloba los diferentes PIs (EAN, UPC, ISBN, etc).
   async searchProductsByGTIN(
     product_identifier,
-    { limit = 10, sort = null } = {}
+    { limit = 10, sort = null, include_global = false } = {}
   ) {
     try {
       const params = {
         status: "active",
-        site_id: "MLA",
+        site_id: include_global ? "CBT" : "MLA",
         product_identifier,
+        // Excluir filtros de tiendas oficiales para obtener todos los vendedores
+        official_store_id: null,
+        seller_type: "all",
       };
 
       if (sort) params.sort = sort;
@@ -190,8 +199,12 @@ class MercadoLibreAPI {
     try {
       if (!getAll) {
         const response = await this.axiosInstance.get(
-          `/products/${productId}/items`
+          `/products/${productId}/items`,
+          {
+            params: { international_delivery_mode: "buy" },
+          }
         );
+        console.log("itemResponse", response.data);
         return response.data;
       }
 
@@ -301,12 +314,16 @@ class MercadoLibreAPI {
     }
   }
 
-  async getProductPriceByQuery(query, { limit = 5, sort = "price_asc" } = {}) {
+  async getProductPriceByQuery(
+    query,
+    { limit = 5, sort = "price_asc", include_global = false } = {}
+  ) {
     try {
       // 1. Buscar productos por query
       const productsResponse = await this.searchProducts(query, {
         limit,
         sort,
+        include_global,
       });
 
       if (!productsResponse.results || productsResponse.results.length === 0) {
@@ -324,6 +341,7 @@ class MercadoLibreAPI {
         productsFound: productsResponse.results.length,
         itemsFound: itemsResponse.length,
         results: itemsResponse,
+        include_global,
       };
     } catch (error) {
       console.error(
@@ -336,7 +354,7 @@ class MercadoLibreAPI {
 
   async getProductPriceByGTIN(
     product_identifier,
-    { limit = 10, sort = "price_asc" } = {}
+    { limit = 10, sort = "price_asc", include_global = false } = {}
   ) {
     try {
       // 1. Buscar productos por GTIN
@@ -345,6 +363,7 @@ class MercadoLibreAPI {
         {
           limit,
           sort,
+          include_global,
         }
       );
 
@@ -366,6 +385,7 @@ class MercadoLibreAPI {
         itemsFound: itemsResponse.length,
         results: itemsResponse,
         productDetails: productsResponse.results,
+        include_global,
       };
     } catch (error) {
       console.error(
@@ -453,6 +473,48 @@ class MercadoLibreAPI {
       return response.data;
     } catch (error) {
       console.error("Error getting shipping options:", error);
+      throw error;
+    }
+  }
+
+  async getSellerItems(sellerId) {
+    try {
+      const response = await this.axiosInstance.get(
+        `/users/${sellerId}/items/search`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error getting seller items:", error);
+      throw error;
+    }
+  }
+
+  async searchProductsBySite(
+    query,
+    { limit = 50, sort = null, include_global = false } = {}
+  ) {
+    try {
+      const siteId = include_global ? "CBT" : "MLA";
+      const params = {
+        q: query,
+        limit,
+        // Excluir filtros de tiendas oficiales
+        official_store_id: null,
+        seller_type: "all",
+      };
+
+      if (sort) params.sort = sort;
+
+      const response = await this.axiosInstance.get(`/sites/${siteId}/search`, {
+        params,
+      });
+      console.log("siteSearchResponse", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Error searching products by site:",
+        error.response?.data || error.message
+      );
       throw error;
     }
   }
