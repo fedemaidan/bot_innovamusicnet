@@ -110,7 +110,7 @@ export async function scrapeMeliPrices(
 
       const $ = cheerio.load(html);
 
-      $("li.ui-search-layout__item").each((_, el) => {
+      $("li.ui-search-layout__item").each(async (_, el) => {
         const $el = $(el);
 
         let title = $el.find("h2.ui-search-item__title").text().trim();
@@ -118,81 +118,126 @@ export async function scrapeMeliPrices(
           title = $el.find("a.poly-component__title").text().trim();
         }
 
-        // Buscar el precio final (con descuento aplicado)
-        let fraction = "";
-        let cents = "";
-
-        // Estrategia 1: Buscar el precio en elementos de descuento (precio final)
-        fraction = $el
-          .find(
-            ".andes-money-amount--cents-superscript .andes-money-amount__fraction"
-          )
-          .text();
-        cents = $el
-          .find(
-            ".andes-money-amount--cents-superscript .andes-money-amount__cents"
-          )
-          .text();
-
-        // Estrategia 2: Si no hay descuento, buscar el precio principal
-        if (!fraction) {
-          fraction = $el
-            .find("span.andes-money-amount__fraction")
-            .first()
-            .text();
-          cents = $el.find("span.andes-money-amount__cents").first().text();
-        }
-
-        // Estrategia 3: Buscar en elementos específicos de precio actual
-        if (!fraction) {
-          fraction = $el
-            .find(".ui-search-price__part .andes-money-amount__fraction")
-            .text();
-          cents = $el
-            .find(".ui-search-price__part .andes-money-amount__cents")
-            .text();
-        }
-
-        // Estrategia 4: Buscar el último precio encontrado (generalmente el final)
-        if (!fraction) {
-          fraction = $el
-            .find("span.andes-money-amount__fraction")
-            .last()
-            .text();
-          cents = $el.find("span.andes-money-amount__cents").last().text();
-        }
-
-        // Estrategia 5: Buscar en elementos que contengan "final" o "actual"
-        if (!fraction) {
-          fraction = $el
-            .find(".ui-search-price__part--final .andes-money-amount__fraction")
-            .text();
-          cents = $el
-            .find(".ui-search-price__part--final .andes-money-amount__cents")
-            .text();
-        }
-
+        // Buscar el link
         const link = $el.find("a.poly-component__title").attr("href");
 
-        if (fraction) {
-          const priceStr = `${fraction.replace(/\./g, "")}.${cents || "00"}`;
+        let fraction = "";
+        let cents = "";
+        let priceStr = null;
 
-          // Extraer el código del producto del link
-          let productId = null;
-          if (link) {
-            // Primero intentar extraer del parámetro searchVariation
-            const searchVariationMatch = link.match(/searchVariation=([^&]+)/);
-            if (searchVariationMatch) {
-              productId = searchVariationMatch[1];
-            } else {
-              // Si no hay searchVariation, extraer el código después de /p/
-              const pathMatch = link.match(/\/p\/([^#?]+)/);
-              if (pathMatch) {
-                productId = pathMatch[1];
+        // Si el link es ficha de producto, hacer fetch adicional
+        if (link && /\/p\/MLA\d+/.test(link)) {
+          try {
+            const resProd = await fetch(link, {
+              headers: {
+                "User-Agent": getRandomUserAgent(),
+                Accept:
+                  "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+              },
+              signal: AbortSignal.timeout(20000),
+            });
+            if (resProd.ok) {
+              const htmlProd = await resProd.text();
+              const $prod = cheerio.load(htmlProd);
+              // El precio suele estar en .andes-money-amount__fraction y .andes-money-amount__cents dentro de .ui-pdp-price__second-line
+              const priceBlock = $prod(
+                ".ui-pdp-price__second-line, .ui-pdp-price__main-container"
+              );
+              fraction = priceBlock
+                .find(".andes-money-amount__fraction")
+                .first()
+                .text();
+              cents = priceBlock
+                .find(".andes-money-amount__cents")
+                .first()
+                .text();
+              if (fraction) {
+                priceStr = `${fraction.replace(/\./g, "")}.${cents || "00"}`;
               }
             }
+          } catch (e) {
+            // Si falla, fallback a scraping normal
+            priceStr = null;
+          }
+        }
+
+        // Si no es ficha de producto o falló el fetch, usar scraping normal
+        if (!priceStr) {
+          // Estrategia 1: Buscar el precio en elementos de descuento (precio final)
+          fraction = $el
+            .find(
+              ".andes-money-amount--cents-superscript .andes-money-amount__fraction"
+            )
+            .text();
+          cents = $el
+            .find(
+              ".andes-money-amount--cents-superscript .andes-money-amount__cents"
+            )
+            .text();
+
+          // Estrategia 2: Si no hay descuento, buscar el precio principal
+          if (!fraction) {
+            fraction = $el
+              .find("span.andes-money-amount__fraction")
+              .first()
+              .text();
+            cents = $el.find("span.andes-money-amount__cents").first().text();
           }
 
+          // Estrategia 3: Buscar en elementos específicos de precio actual
+          if (!fraction) {
+            fraction = $el
+              .find(".ui-search-price__part .andes-money-amount__fraction")
+              .text();
+            cents = $el
+              .find(".ui-search-price__part .andes-money-amount__cents")
+              .text();
+          }
+
+          // Estrategia 4: Buscar el último precio encontrado (generalmente el final)
+          if (!fraction) {
+            fraction = $el
+              .find("span.andes-money-amount__fraction")
+              .last()
+              .text();
+            cents = $el.find("span.andes-money-amount__cents").last().text();
+          }
+
+          // Estrategia 5: Buscar en elementos que contengan "final" o "actual"
+          if (!fraction) {
+            fraction = $el
+              .find(
+                ".ui-search-price__part--final .andes-money-amount__fraction"
+              )
+              .text();
+            cents = $el
+              .find(".ui-search-price__part--final .andes-money-amount__cents")
+              .text();
+          }
+
+          if (fraction) {
+            priceStr = `${fraction.replace(/\./g, "")}.${cents || "00"}`;
+          }
+        }
+
+        // Extraer el código del producto del link
+        let productId = null;
+        if (link) {
+          // Primero intentar extraer del parámetro searchVariation
+          const searchVariationMatch = link.match(/searchVariation=([^&]+)/);
+          if (searchVariationMatch) {
+            productId = searchVariationMatch[1];
+          } else {
+            // Si no hay searchVariation, extraer el código después de /p/
+            const pathMatch = link.match(/\/p\/([^#?]+)/);
+            if (pathMatch) {
+              productId = pathMatch[1];
+            }
+          }
+        }
+
+        if (priceStr) {
           upcResults.results.push({
             title,
             price: parseFloat(priceStr),
