@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { getBrandFromGoUPC } from "./upcScrapper.js";
 
 // Función para generar un delay aleatorio
 function delay(ms) {
@@ -16,42 +17,155 @@ function getRandomUserAgent() {
   return userAgents[Math.floor(Math.random() * userAgents.length)];
 }
 
+function extractItemId(url) {
+  const m1 = url.match(/MLA-(\d+)/); // https://…/MLA-123456…
+  if (m1) return `MLA${m1[1]}`;
+
+  const m2 = url.match(/\/p\/(MLA\d+)/); // https://…/p/MLA123456
+  if (m2) return m2[1];
+
+  const m3 = url.match(/[?&]item_id=(MLA\d+)/);
+  if (m3) return m3[1];
+
+  return null;
+}
+
 async function getSellerIdFromPublication(link) {
   try {
-    const res = await fetch(link, {
+    /* ---------- 1. intentar vía API oficial ---------- */
+    const item_id = extractItemId(link);
+    if (item_id) {
+      try {
+        const apiResp = await fetch(
+          `https://api.mercadolibre.com/items/${item_id}`,
+          {
+            headers: { "User-Agent": getRandomUserAgent() },
+            signal: AbortSignal.timeout(10000),
+          }
+        );
+
+        if (apiResp.ok) {
+          const data = await apiResp.json();
+          if (data.seller_id) {
+            return { seller_id: String(data.seller_id), item_id };
+          }
+        }
+      } catch (_) {
+        /* si la API falla, continuamos al scraping */
+      }
+    }
+
+    /* ---------- 2. fallback: scraping del HTML ---------- */
+    const pageResp = await fetch(link, {
       headers: {
         "User-Agent": getRandomUserAgent(),
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+        "Accept-Language": "es-ES,es;q=0.8",
       },
       signal: AbortSignal.timeout(20000),
     });
-    if (!res.ok) return null;
-    const html = await res.text();
+    if (!pageResp.ok) return { seller_id: null, item_id };
 
-    // Extraer seller_id
+    const html = await pageResp.text();
+
+    // a) buscar seller_id en pdp_filters (ej: pdp_filters=seller_id%3A2153421531)
+    const pdpFiltersMatch = html.match(/pdp_filters=seller_id%3A(\d+)/);
+    if (pdpFiltersMatch) {
+      console.log("seller_id encontrado en pdp_filters:", pdpFiltersMatch[1]);
+      return { seller_id: pdpFiltersMatch[1], item_id };
+    }
+
+    // b) buscar seller_id directo en la URL
     const sellerMatch = html.match(/seller_id=(\d+)/);
-    const seller_id = sellerMatch ? sellerMatch[1] : null;
+    if (sellerMatch) {
+      return { seller_id: sellerMatch[1], item_id };
+    }
 
-    // Extraer item_id del link
-    const itemMatch = link.match(/MLA-(\d+)/);
-    const item_id = itemMatch ? `MLA${itemMatch[1]}` : null;
+    // b) buscar en todos los enlaces de la página
+    const $ = cheerio.load(html);
 
-    return { seller_id, item_id };
-  } catch (e) {
-    return null;
+    // Buscar en todos los enlaces que contengan seller_id
+    let foundSellerId = null;
+    $("a[href*='seller_id']").each((_, el) => {
+      const href = $(el).attr("href");
+      console.log("Enlace con seller_id encontrado:", href);
+      const hrefMatch = href.match(/seller_id=(\d+)/);
+      if (hrefMatch && !foundSellerId) {
+        foundSellerId = hrefMatch[1];
+        console.log("seller_id extraído del enlace:", foundSellerId);
+      }
+    });
+
+    if (foundSellerId) {
+      return { seller_id: foundSellerId, item_id };
+    }
+
+    // Buscar en enlaces con pdp_filters
+    $("a[href*='pdp_filters']").each((_, el) => {
+      const href = $(el).attr("href");
+      console.log("Enlace con pdp_filters encontrado:", href);
+      const pdpMatch = href.match(/pdp_filters=seller_id%3A(\d+)/);
+      if (pdpMatch && !foundSellerId) {
+        foundSellerId = pdpMatch[1];
+        console.log("seller_id extraído de pdp_filters:", foundSellerId);
+      }
+    });
+
+    if (foundSellerId) {
+      return { seller_id: foundSellerId, item_id };
+    }
+
+    // Buscar en todos los enlaces de recomendaciones de footer
+    const footerLinks = $("a.ui-recommendations-footer__link");
+    let sellerIdFooter = null;
+    footerLinks.each((_, el) => {
+      const href = $(el).attr("href");
+      if (href) {
+        const match = href.match(/seller_id=(\d+)/);
+        if (match && !sellerIdFooter) {
+          sellerIdFooter = match[1];
+        }
+      }
+    });
+    if (sellerIdFooter) {
+      return { seller_id: sellerIdFooter, item_id };
+    }
+
+    // c) último intento: buscar en window.__INITIAL_STATE__
+    const stateMatch = html.match(/window\.__INITIAL_STATE__\s*=\s*({.*?});/s);
+    if (stateMatch) {
+      try {
+        const stateObj = JSON.parse(stateMatch[1]);
+        const deep = (o) =>
+          Object(o) === o
+            ? Object.values(o).reduce(
+                (r, v) => r || deep(v),
+                o.seller_id ? String(o.seller_id) : null
+              )
+            : null;
+        const found = deep(stateObj);
+        if (found) return { seller_id: found, item_id };
+      } catch (_) {
+        /* ignore JSON errors */
+      }
+    }
+
+    // Si llegamos aquí, no lo encontramos
+    return { seller_id: null, item_id };
+  } catch (err) {
+    console.error("Error en getSellerIdFromPublication:", err.message);
+    return { seller_id: null, item_id: null };
   }
 }
 
 export async function scrapeMeliPrices(
   upcCode,
   maxPages = 1,
-  filterByReputation = false
+  filterByReputation = false,
+  precioMinimo = 0
 ) {
-  const { MercadoLibreAPI } = await import(
-    "../Utiles/MercadoLibreAPI.js"
-  ).catch(() => require("../Utiles/MercadoLibreAPI"));
+  const { MercadoLibreAPI } = await import("../Utiles/MercadoLibreAPI.js");
   const api = MercadoLibreAPI.getInstance
     ? MercadoLibreAPI.getInstance()
     : new MercadoLibreAPI();
@@ -265,19 +379,34 @@ export async function scrapeMeliPrices(
 
   if (!upcResults.results.length) return null;
 
+  const brand = await getBrandFromGoUPC(upcCode);
+
+  upcResults.results = upcResults.results.filter((item) => {
+    const priceOk = item.price >= precioMinimo;
+    const brandOk = item.title.includes(brand);
+    return priceOk && brandOk;
+  });
+
+  console.log("upcResults después del filtro:", upcResults.results);
+
   if (!filterByReputation) {
     return [upcResults];
   }
 
   const sorted = [...upcResults.results].sort((a, b) => a.price - b.price);
+
   for (const pub of sorted) {
-    if (!pub.link) continue;
+    if (!pub.link) {
+      continue;
+    }
     const sellerData = await getSellerIdFromPublication(pub.link);
-    if (!sellerData || !sellerData.seller_id) continue;
+    if (!sellerData || !sellerData.seller_id) {
+      console.log("No se pudo obtener seller_id, saltando...");
+      continue;
+    }
 
     try {
       const reputation = await api.getSellerReputation(sellerData.seller_id);
-      console.log("reputation", reputation);
       if (
         reputation.seller_reputation &&
         reputation.seller_reputation.level_id === "5_green"
@@ -288,10 +417,6 @@ export async function scrapeMeliPrices(
           try {
             shippingOptions = await api.getShippingOptions(sellerData.item_id);
           } catch (shippingError) {
-            console.log(
-              "Error obteniendo opciones de envío:",
-              shippingError.message
-            );
             shippingOptions = {
               error: "No se pudieron obtener las opciones de envío",
             };
