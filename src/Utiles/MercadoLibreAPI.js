@@ -268,18 +268,6 @@ class MercadoLibreAPI {
     }
   }
 
-  async testFede() {
-    try {
-      const response = await this.axiosInstance.get(
-        "/products/MLA48561112/items"
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error testing API:", error);
-      throw error;
-    }
-  }
-
   async getItems(productsIds, { getAll = true } = {}) {
     console.log("productsIds", productsIds);
     let results = [];
@@ -405,35 +393,7 @@ class MercadoLibreAPI {
       throw error;
     }
   }
-
-  async getItemDetail(itemId) {
-    try {
-      const response = await this.axiosInstance.get(`/items`, {
-        params: {
-          ids: itemId,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error getting item detail:", error);
-      throw error;
-    }
-  }
-
-  //id de items
-  //MLA2029153606
-  //MLA1506141949
-  //MLA2028449240
-
   async getSellerReputation(sellerId) {
-    //   "seller_reputation": {
-    //     "level_id": "5_green", -> User reputation level described in thermometer numbering and color.
-    //     "power_seller_status": null,
-    //     "transactions": {
-    //         "period": "historic",
-    //         "total": 20493
-    //     }
-    // },
     try {
       const response = await this.axiosInstance.get(`users/${sellerId}`);
       return response.data;

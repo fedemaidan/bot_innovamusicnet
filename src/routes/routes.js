@@ -252,15 +252,6 @@ router.get("/precio-minimo-gtin", async (req, res) => {
   }
 });
 
-router.get("/test1", async (req, res) => {
-  const api = MercadoLibreAPI.getInstance();
-  const response = await api.getSellerReputation("2153421531");
-
-  const sellerItems = await api.getSellerItems("2153421531");
-
-  res.json({ sellerItems, sellerReputation: response });
-});
-
 router.get("/buscar-todos-vendedores", async (req, res) => {
   const { q, include_global = false } = req.query;
 
@@ -294,25 +285,70 @@ router.get("/test", async (req, res) => {
   res.json(response);
 });
 
-router.get("/test-scraping", async (req, res) => {
-  const { gtin } = req.query;
+router.get("/test1", async (req, res) => {
+  const api = MercadoLibreAPI.getInstance();
+  const response = await api.getSellerReputation("2153421531");
+
+  res.json(response);
+});
+
+//upc, texto, minPrice
+router.get("/precioMinimo", async (req, res) => {
+  const { gtin, texto, precioMinimo } = req.query;
 
   if (!gtin) {
     return res.status(400).json({ error: "gtin es requerido" });
   }
 
-  const prices = await scrapeMeliPrices([gtin]);
-  console.log("prices", prices);
-  const results = [];
-  prices[0].results.forEach((price) => {
-    results.push({
-      title: price.title,
-      price: price.price,
-      link: price.link,
-      productId: price.productId,
+  const precioMinimoNum = precioMinimo ? parseFloat(precioMinimo) : 0;
+  const prices = await scrapeMeliPrices(gtin, 1, true, precioMinimoNum);
+
+  if (!prices) {
+    return res.json({
+      mensaje:
+        "No se encontraron productos con vendedores de reputación 5_green",
+      results: [],
     });
+  }
+
+  // Si prices es un objeto individual (cuando filterByReputation = true)
+  if (prices.title && prices.price) {
+    return res.json({
+      mensaje: "Producto encontrado con vendedor de reputación 5_green",
+      results: [
+        {
+          title: prices.title,
+          price: prices.price,
+          link: prices.link,
+          productId: prices.productId,
+          seller_id: prices.seller_id,
+          item_id: prices.item_id,
+          seller_nickname: prices.seller_nickname,
+          seller_data: prices.seller_data,
+          shipping_options: prices.shipping_options,
+        },
+      ],
+    });
+  }
+
+  // Si prices es un array (cuando filterByReputation = false)
+  if (Array.isArray(prices) && prices[0] && prices[0].results) {
+    const results = [];
+    prices[0].results.forEach((price) => {
+      results.push({
+        title: price.title,
+        price: price.price,
+        link: price.link,
+        productId: price.productId,
+      });
+    });
+    return res.json(results);
+  }
+
+  return res.json({
+    mensaje: "No se encontraron resultados para el GTIN proporcionado",
+    results: [],
   });
-  res.json(results);
 });
 
 module.exports = router;
