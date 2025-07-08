@@ -170,7 +170,7 @@ async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
 
     const searchUrl = `https://listado.mercadolibre.com.ar/${encodeURIComponent(
       searchTerm
-    )}_OrderId_PRICE_NoIndex_True`;
+    )}_OrderId_PRICE_PriceRange_200000-0_NoIndex_True`;
 
     console.log("searchUrl", searchUrl);
 
@@ -212,7 +212,10 @@ async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
 
       const $ = cheerio.load(html);
 
-      $("li.ui-search-layout__item").each(async (_, el) => {
+      // Usar un bucle for...of en lugar de each() para manejar correctamente las promesas
+      const items = $("li.ui-search-layout__item").toArray();
+
+      for (const el of items) {
         const $el = $(el);
 
         let title = $el.find("h2.ui-search-item__title").text().trim();
@@ -347,7 +350,7 @@ async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
             productId,
           });
         }
-      });
+      }
 
       if (
         !$('a.andes-pagination__link.ui-search-link[title="Siguiente"]').length
@@ -382,13 +385,21 @@ async function scrapeMeliPrices(
   let upcResults = await scrapeMeliBySearchTerm(upcCode, maxPages);
   upcResults.upc = upcCode;
 
+  console.log("upcResults antes de todos los filtros:", upcResults.results);
+
   const brand = await getBrandFromGoUPC(upcCode);
+  console.log("brand", brand);
 
   upcResults.results = upcResults.results.filter((item) => {
     const priceOk = item.price >= precioMinimo;
     const brandOk = item.title.toLowerCase().includes(brand.toLowerCase());
     return priceOk && brandOk;
   });
+
+  console.log(
+    "upcResults después del filtro del nombre de la marca y mayor que el precio minimo:",
+    upcResults.results
+  );
 
   // Si no hay resultados después del filtro por UPC, intentar con el nombre
   if (!upcResults.results.length && nombre) {
@@ -408,7 +419,10 @@ async function scrapeMeliPrices(
     upcResults.searchTerm = upcCode;
   }
 
-  console.log("upcResults después del filtro:", upcResults.results);
+  console.log(
+    "upcResults después del filtro por nombre de marca:",
+    upcResults.results
+  );
 
   const sorted = [...upcResults.results].sort((a, b) => a.price - b.price);
 
