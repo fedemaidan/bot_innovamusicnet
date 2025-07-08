@@ -1,6 +1,6 @@
-import * as cheerio from "cheerio";
+const cheerio = require("cheerio");
 
-// Función para generar un delay aleatorio
+// Función para generar un wtorio
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -21,7 +21,7 @@ function getRandomUserAgent() {
  * @param {string} upc
  * @returns {Promise<string|null>}
  */
-export async function getBrandFromGoUPC(upc) {
+async function getBrandFromGoUPC(upc) {
   const url = `https://go-upc.com/search?q=${encodeURIComponent(upc)}`;
 
   try {
@@ -60,3 +60,5 @@ export async function getBrandFromGoUPC(upc) {
     return null;
   }
 }
+
+module.exports = { getBrandFromGoUPC };
