@@ -294,14 +294,14 @@ router.get("/test1", async (req, res) => {
 
 //upc, texto, minPrice
 router.get("/precioMinimo", async (req, res) => {
-  const { gtin, texto, precioMinimo } = req.query;
+  const { gtin, nombre, precioMinimo } = req.query;
 
   if (!gtin) {
     return res.status(400).json({ error: "gtin es requerido" });
   }
 
   const precioMinimoNum = precioMinimo ? parseFloat(precioMinimo) : 0;
-  const prices = await scrapeMeliPrices(gtin, 1, true, precioMinimoNum);
+  const prices = await scrapeMeliPrices(gtin, 1, precioMinimoNum, nombre);
 
   if (!prices) {
     return res.json({
@@ -315,19 +315,18 @@ router.get("/precioMinimo", async (req, res) => {
   if (prices.title && prices.price) {
     return res.json({
       mensaje: "Producto encontrado con vendedor de reputación 5_green",
-      results: [
-        {
-          title: prices.title,
-          price: prices.price,
-          link: prices.link,
-          productId: prices.productId,
-          seller_id: prices.seller_id,
-          item_id: prices.item_id,
-          seller_nickname: prices.seller_nickname,
-          seller_data: prices.seller_data,
-          shipping_options: prices.shipping_options,
-        },
-      ],
+      result: {
+        searchTerm: prices.searchTerm,
+        title: prices.title,
+        price: prices.price,
+        link: prices.link,
+        productId: prices.productId,
+        seller_id: prices.seller_id,
+        item_id: prices.item_id,
+        seller_nickname: prices.seller_nickname,
+        seller_data: prices.seller_data,
+        shipping_options: prices.shipping_options,
+      },
     });
   }
 

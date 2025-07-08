@@ -159,20 +159,8 @@ async function getSellerIdFromPublication(link) {
   }
 }
 
-export async function scrapeMeliPrices(
-  upcCode,
-  maxPages = 1,
-  filterByReputation = false,
-  precioMinimo = 0
-) {
-  const { MercadoLibreAPI } = await import("../Utiles/MercadoLibreAPI.js");
-  const api = MercadoLibreAPI.getInstance
-    ? MercadoLibreAPI.getInstance()
-    : new MercadoLibreAPI();
-
-  console.log("upcCode", upcCode);
-
-  const upcResults = { upc: upcCode, results: [] };
+async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
+  const results = { searchTerm, results: [] };
 
   for (let page = 1; page <= maxPages; page++) {
     if (page > 1) {
@@ -181,7 +169,7 @@ export async function scrapeMeliPrices(
     }
 
     const searchUrl = `https://listado.mercadolibre.com.ar/${encodeURIComponent(
-      upcCode
+      searchTerm
     )}_OrderId_PRICE_NoIndex_True`;
 
     console.log("searchUrl", searchUrl);
@@ -207,9 +195,9 @@ export async function scrapeMeliPrices(
 
       if (!res.ok) {
         console.log(
-          `Error HTTP ${res.status} para UPC ${upcCode}, página ${page}`
+          `Error HTTP ${res.status} para búsqueda ${searchTerm}, página ${page}`
         );
-        upcResults.error = `HTTP ${res.status}`;
+        results.error = `HTTP ${res.status}`;
         break;
       }
 
@@ -217,7 +205,7 @@ export async function scrapeMeliPrices(
 
       if (!html.includes("ui-search-layout__item")) {
         console.log(
-          `No se encontraron resultados para UPC ${upcCode}, página ${page}`
+          `No se encontraron resultados para búsqueda ${searchTerm}, página ${page}`
         );
         break;
       }
@@ -352,7 +340,7 @@ export async function scrapeMeliPrices(
         }
 
         if (priceStr) {
-          upcResults.results.push({
+          results.results.push({
             title,
             price: parseFloat(priceStr),
             link,
@@ -367,31 +355,60 @@ export async function scrapeMeliPrices(
         break;
     } catch (error) {
       console.error(
-        `Error al procesar UPC ${upcCode}, página ${page}:`,
+        `Error al procesar búsqueda ${searchTerm}, página ${page}:`,
         error.message
       );
-      upcResults.error = error.message;
+      results.error = error.message;
       break;
     }
   }
 
-  console.log("upcResults", upcResults);
+  return results;
+}
 
-  if (!upcResults.results.length) return null;
+export async function scrapeMeliPrices(
+  upcCode,
+  maxPages = 1,
+  precioMinimo = 0,
+  nombre = ""
+) {
+  const { MercadoLibreAPI } = await import("../Utiles/MercadoLibreAPI.js");
+  const api = MercadoLibreAPI.getInstance
+    ? MercadoLibreAPI.getInstance()
+    : new MercadoLibreAPI();
+
+  console.log("upcCode", upcCode);
+
+  let upcResults = await scrapeMeliBySearchTerm(upcCode, maxPages);
+  upcResults.upc = upcCode;
 
   const brand = await getBrandFromGoUPC(upcCode);
 
   upcResults.results = upcResults.results.filter((item) => {
     const priceOk = item.price >= precioMinimo;
-    const brandOk = item.title.includes(brand);
+    const brandOk = item.title.toLowerCase().includes(brand.toLowerCase());
     return priceOk && brandOk;
   });
 
-  console.log("upcResults después del filtro:", upcResults.results);
-
-  if (!filterByReputation) {
-    return [upcResults];
+  // Si no hay resultados después del filtro por UPC, intentar con el nombre
+  if (!upcResults.results.length && nombre) {
+    console.log(
+      "No se encontraron resultados por UPC filtrados, intentando con nombre:",
+      nombre
+    );
+    upcResults = await scrapeMeliBySearchTerm(nombre, maxPages);
+    upcResults.upc = upcCode;
+    upcResults.searchTerm = nombre;
+    upcResults.results = upcResults.results.filter((item) => {
+      const priceOk = item.price >= precioMinimo;
+      const brandOk = item.title.toLowerCase().includes(brand.toLowerCase());
+      return priceOk && brandOk;
+    });
+  } else {
+    upcResults.searchTerm = upcCode;
   }
+
+  console.log("upcResults después del filtro:", upcResults.results);
 
   const sorted = [...upcResults.results].sort((a, b) => a.price - b.price);
 
@@ -401,7 +418,6 @@ export async function scrapeMeliPrices(
     }
     const sellerData = await getSellerIdFromPublication(pub.link);
     if (!sellerData || !sellerData.seller_id) {
-      console.log("No se pudo obtener seller_id, saltando...");
       continue;
     }
 
@@ -425,6 +441,7 @@ export async function scrapeMeliPrices(
 
         return {
           ...pub,
+          searchTerm: upcResults.searchTerm,
           seller_id: sellerData.seller_id,
           item_id: sellerData.item_id,
           seller_nickname: reputation.nickname,
