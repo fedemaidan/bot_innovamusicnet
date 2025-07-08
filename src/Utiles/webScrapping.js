@@ -1,5 +1,5 @@
-import * as cheerio from "cheerio";
-import { getBrandFromGoUPC } from "./upcScrapper.js";
+const cheerio = require("cheerio");
+const { getBrandFromGoUPC } = require("./upcScrapper.js");
 
 // Función para generar un delay aleatorio
 function delay(ms) {
@@ -366,13 +366,13 @@ async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
   return results;
 }
 
-export async function scrapeMeliPrices(
+async function scrapeMeliPrices(
   upcCode,
   maxPages = 1,
   precioMinimo = 0,
   nombre = ""
 ) {
-  const { MercadoLibreAPI } = await import("../Utiles/MercadoLibreAPI.js");
+  const { MercadoLibreAPI } = require("../Utiles/MercadoLibreAPI.js");
   const api = MercadoLibreAPI.getInstance
     ? MercadoLibreAPI.getInstance()
     : new MercadoLibreAPI();
@@ -456,3 +456,5 @@ export async function scrapeMeliPrices(
   // Si no se encontró ninguna con reputación 5_green
   return null;
 }
+
+module.exports = { scrapeMeliPrices };
