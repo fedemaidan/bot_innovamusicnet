@@ -7,3 +7,4 @@ git
 .vs/
 src/Utiles/downloads
 src/services/downloads
+.DS_Store

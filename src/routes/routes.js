@@ -1,6 +1,7 @@
 const express = require("express");
 const { MercadoLibreAPI } = require("../Utiles/MercadoLibreAPI");
 const { scrapeMeliPrices } = require("../Utiles/webScrapping");
+const keepaRoutes = require("./keepaRoutes");
 
 const router = express.Router();
 
@@ -349,5 +350,7 @@ router.get("/precioMinimo", async (req, res) => {
     results: [],
   });
 });
+
+router.use("/keepa", keepaRoutes);
 
 module.exports = router;

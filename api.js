@@ -29,6 +29,5 @@ module.exports = async function startApi() {
   app.listen(port, () => {
     console.log(`Servidor corriendo en http://localhost:${port}/qr`);
     console.log(`- API disponible en http://localhost:${port}/api/`);
-    console.log(`- QR disponible en http://localhost:${port}/qr`);
   });
 };
