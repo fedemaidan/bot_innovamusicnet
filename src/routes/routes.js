@@ -9,6 +9,7 @@ const { scrapeMeliPrices } = require("../Utiles/webScrapping");
 const { router: keepaRoutes } = require("./keepaRoutes");
 const { calcularEstadisticas } = require("../Utiles/calcularEstadisticas");
 const { delay } = require("../Utiles/helpersScrapping");
+const { router: whatsappRoutes } = require("../services/Mensajes/whatsapp");
 
 const router = express.Router();
 
@@ -407,5 +408,7 @@ router.get("/comparar-precios", async (req, res) => {
 });
 
 router.use("/keepa", keepaRoutes);
+
+router.use("/whatsapp", whatsappRoutes);
 
 module.exports = router;
