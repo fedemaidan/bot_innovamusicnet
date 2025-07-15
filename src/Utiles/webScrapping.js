@@ -1,39 +1,16 @@
 const cheerio = require("cheerio");
-const { getBrandFromGoUPC } = require("./upcScrapper.js");
-
-// Función para generar un delay aleatorio
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getRandomUserAgent() {
-  const userAgents = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0",
-  ];
-  return userAgents[Math.floor(Math.random() * userAgents.length)];
-}
-
-function extractItemId(url) {
-  const m1 = url.match(/MLA-(\d+)/); // https://…/MLA-123456…
-  if (m1) return `MLA${m1[1]}`;
-
-  const m2 = url.match(/\/p\/(MLA\d+)/); // https://…/p/MLA123456
-  if (m2) return m2[1];
-
-  const m3 = url.match(/[?&]item_id=(MLA\d+)/);
-  if (m3) return m3[1];
-
-  return null;
-}
+const {
+  getRandomUserAgent,
+  delay,
+  humanDelay,
+  getRealisticHeaders,
+  extractItemIdFromUrl,
+} = require("./helpersScrapping");
+const { getProductKeepa } = require("./keepa.js");
 
 async function getSellerIdFromPublication(link) {
   try {
-    /* ---------- 1. intentar vía API oficial ---------- */
-    const item_id = extractItemId(link);
+    const item_id = extractItemIdFromUrl(link);
     if (item_id) {
       try {
         const apiResp = await fetch(
@@ -50,9 +27,7 @@ async function getSellerIdFromPublication(link) {
             return { seller_id: String(data.seller_id), item_id };
           }
         }
-      } catch (_) {
-        /* si la API falla, continuamos al scraping */
-      }
+      } catch (_) {}
     }
 
     /* ---------- 2. fallback: scraping del HTML ---------- */
@@ -159,43 +134,45 @@ async function getSellerIdFromPublication(link) {
   }
 }
 
-async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
+async function scrapeMeliBySearchTerm(
+  searchTerm,
+  maxPages = 1,
+  precioMinimo = 0
+) {
   const results = { searchTerm, results: [] };
 
   for (let page = 1; page <= maxPages; page++) {
+    // Delay más largo y aleatorio entre requests
     if (page > 1) {
-      const randomDelay = Math.random() * 2000 + 1000; // 1-3 segundos
+      const randomDelay = Math.random() * 5000 + 3000; // 3-8 segundos
       await delay(randomDelay);
     }
 
-    const searchUrl = `https://listado.mercadolibre.com.ar/${encodeURIComponent(
-      searchTerm
-    )}_OrderId_PRICE_PriceRange_200000-0_NoIndex_True`;
+    let searchUrl = "";
+    if (precioMinimo > 0) {
+      searchUrl = `https://listado.mercadolibre.com.ar/${encodeURIComponent(
+        searchTerm
+      )}_OrderId_PRICE_PriceRange_${precioMinimo}-0_NoIndex_True`;
+    } else {
+      searchUrl = `https://listado.mercadolibre.com.ar/${encodeURIComponent(
+        searchTerm
+      )}_OrderId_PRICE_NoIndex_True`;
+    }
 
-    console.log("searchUrl", searchUrl);
+    console.log("🔍 Buscando en URL:", searchUrl);
 
     try {
+      // Headers más realistas para evadir detección
+      const headers = getRealisticHeaders("https://www.mercadolibre.com.ar/");
+
       const res = await fetch(searchUrl, {
-        headers: {
-          "User-Agent": getRandomUserAgent(),
-          Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-          "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-          "Accept-Encoding": "gzip, deflate, br",
-          DNT: "1",
-          Connection: "keep-alive",
-          "Upgrade-Insecure-Requests": "1",
-          "Sec-Fetch-Dest": "document",
-          "Sec-Fetch-Mode": "navigate",
-          "Sec-Fetch-Site": "none",
-          "Cache-Control": "max-age=0",
-        },
-        signal: AbortSignal.timeout(30000),
+        headers,
+        signal: AbortSignal.timeout(45000), // Timeout más largo
       });
 
       if (!res.ok) {
         console.log(
-          `Error HTTP ${res.status} para búsqueda ${searchTerm}, página ${page}`
+          `❌ Error HTTP ${res.status} para búsqueda ${searchTerm}, página ${page}`
         );
         results.error = `HTTP ${res.status}`;
         break;
@@ -203,17 +180,64 @@ async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
 
       const html = await res.text();
 
-      if (!html.includes("ui-search-layout__item")) {
+      // Verificar si MercadoLibre está bloqueando el acceso
+      if (
+        html.includes("account-verification") ||
+        html.includes("¡Hola! Para continuar")
+      ) {
         console.log(
-          `No se encontraron resultados para búsqueda ${searchTerm}, página ${page}`
+          "🚫 MercadoLibre está bloqueando el acceso - página de verificación detectada"
         );
+        results.error =
+          "MercadoLibre está bloqueando el acceso. Se requiere verificación de cuenta.";
         break;
       }
+
+      if (
+        html.includes("suspicious-traffic") ||
+        html.includes("traffico-sospechoso")
+      ) {
+        console.log("🚫 MercadoLibre detectó tráfico sospechoso");
+        results.error =
+          "MercadoLibre detectó tráfico sospechoso y bloqueó el acceso.";
+        break;
+      }
+
+      // Verificar si hay resultados
+      if (!html.includes("ui-search-layout__item")) {
+        console.log(
+          `❌ No se encontraron resultados para búsqueda ${searchTerm}, página ${page}`
+        );
+
+        // Verificar si es una página de error o sin resultados
+        if (
+          html.includes("No se encontraron resultados") ||
+          html.includes("no-results")
+        ) {
+          console.log("📝 Página de 'sin resultados' detectada");
+          results.error =
+            "No se encontraron productos con este término de búsqueda";
+        } else {
+          console.log(
+            "⚠️ HTML recibido no contiene elementos de resultados esperados"
+          );
+          console.log(
+            "📄 Primeros 500 caracteres del HTML:",
+            html.substring(0, 500)
+          );
+        }
+        break;
+      }
+
+      console.log("✅ HTML válido recibido, procesando resultados...");
 
       const $ = cheerio.load(html);
 
       // Usar un bucle for...of en lugar de each() para manejar correctamente las promesas
       const items = $("li.ui-search-layout__item").toArray();
+      console.log(
+        `📦 Encontrados ${items.length} elementos en la página ${page}`
+      );
 
       for (const el of items) {
         const $el = $(el);
@@ -230,17 +254,15 @@ async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
         let cents = "";
         let priceStr = null;
 
-        // Si el link es ficha de producto, hacer fetch adicional
+        // Si el link es ficha de producto, hacer fetch adicional con delay
         if (link && /\/p\/MLA\d+/.test(link)) {
           try {
+            // Delay aleatorio antes de hacer el fetch del producto
+            await delay(Math.random() * 2000 + 1000);
+
             const resProd = await fetch(link, {
-              headers: {
-                "User-Agent": getRandomUserAgent(),
-                Accept:
-                  "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-              },
-              signal: AbortSignal.timeout(20000),
+              headers: getRealisticHeaders(searchUrl),
+              signal: AbortSignal.timeout(25000),
             });
             if (resProd.ok) {
               const htmlProd = await resProd.text();
@@ -349,6 +371,8 @@ async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
             link,
             productId,
           });
+        } else {
+          console.log(`⚠️ Producto sin precio: ${title}`);
         }
       }
 
@@ -358,7 +382,7 @@ async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
         break;
     } catch (error) {
       console.error(
-        `Error al procesar búsqueda ${searchTerm}, página ${page}:`,
+        `❌ Error al procesar búsqueda ${searchTerm}, página ${page}:`,
         error.message
       );
       results.error = error.message;
@@ -366,11 +390,12 @@ async function scrapeMeliBySearchTerm(searchTerm, maxPages = 1) {
     }
   }
 
+  console.log(`📊 Total de resultados encontrados: ${results.results.length}`);
   return results;
 }
 
 async function scrapeMeliPrices(
-  upcCode,
+  asin,
   maxPages = 1,
   precioMinimo = 0,
   nombre = ""
@@ -380,51 +405,105 @@ async function scrapeMeliPrices(
     ? MercadoLibreAPI.getInstance()
     : new MercadoLibreAPI();
 
-  console.log("upcCode", upcCode);
+  console.log("asin", asin);
 
-  let upcResults = await scrapeMeliBySearchTerm(upcCode, maxPages);
-  upcResults.upc = upcCode;
+  const keepa = await getProductKeepa(asin);
+  console.log("keepaResponse", keepa);
 
-  console.log("upcResults antes de todos los filtros:", upcResults.results);
+  // Validar que keepa tenga datos válidos
+  if (!keepa || !keepa.products || !keepa.products[0]) {
+    return {
+      success: false,
+      error: "No se pudo obtener información del producto desde Keepa",
+      asin: asin,
+    };
+  }
 
-  const brand = await getBrandFromGoUPC(upcCode);
+  const brand = keepa.products[0].brand.split(" ");
+  const keyWords = keepa.products[0].title.split(" ").slice(0, 5);
+  const upcList = keepa.products[0].upcList;
+  console.log("upcList", upcList);
+  console.log("keyWords", keyWords);
   console.log("brand", brand);
 
-  upcResults.results = upcResults.results.filter((item) => {
-    const priceOk = item.price >= precioMinimo;
-    const brandOk = item.title.toLowerCase().includes(brand.toLowerCase());
-    return priceOk && brandOk;
+  // Validar que upcList tenga elementos
+  if (!upcList || upcList.length === 0) {
+    return {
+      success: false,
+      error: "No se encontraron códigos UPC para el producto",
+      asin: asin,
+    };
+  }
+
+  let meliResults;
+  try {
+    meliResults = await scrapeMeliBySearchTerm(
+      upcList[0],
+      maxPages,
+      precioMinimo
+    );
+    meliResults.asin = asin;
+  } catch (error) {
+    return {
+      success: false,
+      error: `Error al buscar productos en MercadoLibre: ${error.message}`,
+      asin: asin,
+    };
+  }
+
+  console.log("meliResults antes de todos los filtros:", meliResults.results);
+
+  meliResults.results = meliResults.results.filter((item) => {
+    return (
+      keyWords.some((keyword) =>
+        item.title.toLowerCase().includes(keyword.toLowerCase())
+      ) ||
+      brand.some((word) =>
+        item.title.toLowerCase().includes(word.toLowerCase())
+      )
+    );
   });
 
   console.log(
-    "upcResults después del filtro del nombre de la marca y mayor que el precio minimo:",
-    upcResults.results
+    "meliResults después del filtro de las palabras clave de keepa:",
+    meliResults.results
   );
 
-  // Si no hay resultados después del filtro por UPC, intentar con el nombre
-  if (!upcResults.results.length && nombre) {
-    console.log(
-      "No se encontraron resultados por UPC filtrados, intentando con nombre:",
-      nombre
-    );
-    upcResults = await scrapeMeliBySearchTerm(nombre, maxPages);
-    upcResults.upc = upcCode;
-    upcResults.searchTerm = nombre;
-    upcResults.results = upcResults.results.filter((item) => {
-      const priceOk = item.price >= precioMinimo;
-      const brandOk = item.title.toLowerCase().includes(brand.toLowerCase());
-      return priceOk && brandOk;
-    });
-  } else {
-    upcResults.searchTerm = upcCode;
+  if (meliResults.results.length === 0) {
+    return {
+      success: false,
+      error:
+        "No se encontraron resultado despues del filtro por el nombre de la marca y palabras clave de keepa",
+      asin: asin,
+    };
   }
 
-  console.log(
-    "upcResults después del filtro por nombre de marca:",
-    upcResults.results
-  );
+  // Si no hay resultados después del filtro por UPC, intentar con el nombre
+  // if (!meliResults.results.length && nombre) {
+  //   console.log(
+  //     "No se encontraron resultados por UPC filtrados, intentando con nombre:",
+  //     nombre
+  //   );
+  //   meliResults = await scrapeMeliBySearchTerm(
+  //     upcList[0],
+  //     maxPages,
+  //     precioMinimo
+  //   );
+  //   meliResults.asin = asin;
+  //   meliResults.searchTerm = nombre;
+  //   meliResults.results = meliResults.results.filter((item) => {
+  //     return item.title.toLowerCase().includes(brand.toLowerCase());
+  //   });
+  //   console.log(
+  //     "meliResults después del filtro por nombre de marca:",
+  //     meliResults.results
+  //   );
+  // } else {
+  //   meliResults.searchTerm = asin;
+  // }
 
-  const sorted = [...upcResults.results].sort((a, b) => a.price - b.price);
+  const sorted = [...meliResults.results].sort((a, b) => a.price - b.price);
+  let salesAmount = 0;
 
   for (const pub of sorted) {
     if (!pub.link) {
@@ -432,43 +511,50 @@ async function scrapeMeliPrices(
     }
     const sellerData = await getSellerIdFromPublication(pub.link);
     if (!sellerData || !sellerData.seller_id) {
+      console.log("no se encontro el seller_id de la publicacion mas barata");
       continue;
     }
 
     try {
       const reputation = await api.getSellerReputation(sellerData.seller_id);
-      if (
-        reputation.seller_reputation &&
-        reputation.seller_reputation.level_id === "5_green"
-      ) {
-        // Obtener opciones de envío si tenemos item_id
-        let shippingOptions = null;
-        if (sellerData.item_id) {
-          try {
-            shippingOptions = await api.getShippingOptions(sellerData.item_id);
-          } catch (shippingError) {
-            shippingOptions = {
-              error: "No se pudieron obtener las opciones de envío",
-            };
-          }
+      // if (
+      //   reputation.seller_reputation &&
+      //   reputation.seller_reputation.transactions.total > 10
+      // ) {
+      salesAmount = reputation.seller_reputation.transactions.total;
+      // Obtener opciones de envío si tenemos item_id
+      let shippingOptions = null;
+      if (sellerData.item_id) {
+        try {
+          shippingOptions = await api.getShippingOptions(sellerData.item_id);
+        } catch (shippingError) {
+          shippingOptions = {
+            error: "No se pudieron obtener las opciones de envío",
+          };
         }
-
-        return {
-          ...pub,
-          searchTerm: upcResults.searchTerm,
-          seller_id: sellerData.seller_id,
-          item_id: sellerData.item_id,
-          seller_nickname: reputation.nickname,
-          seller_data: reputation,
-          shipping_options: shippingOptions,
-        };
       }
+
+      return {
+        success: true,
+        ...pub,
+        searchTerm: meliResults.searchTerm,
+        seller_id: sellerData.seller_id,
+        item_id: sellerData.item_id,
+        seller_nickname: reputation.nickname,
+        seller_data: reputation,
+        shipping_options: shippingOptions,
+        salesAmount: salesAmount,
+      };
+      //}
     } catch (e) {
       continue;
     }
   }
-  // Si no se encontró ninguna con reputación 5_green
-  return null;
+  return {
+    success: false,
+    error: `No se encontraron resultados con vendedores con mas de 10 ventas, se encontro un vendedor con ${salesAmount} ventas`,
+    asin: asin,
+  };
 }
 
 module.exports = { scrapeMeliPrices };

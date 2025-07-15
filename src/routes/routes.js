@@ -1,71 +1,78 @@
 const express = require("express");
+const {
+  handleCSVCodigosToJSON,
+  escribirResultadoExitoso,
+  escribirResultadoError,
+} = require("../Utiles/csv/csvHandler");
 const { MercadoLibreAPI } = require("../Utiles/MercadoLibreAPI");
 const { scrapeMeliPrices } = require("../Utiles/webScrapping");
-const keepaRoutes = require("./keepaRoutes");
+const { router: keepaRoutes } = require("./keepaRoutes");
+const { calcularEstadisticas } = require("../Utiles/calcularEstadisticas");
+const { delay } = require("../Utiles/helpersScrapping");
 
 const router = express.Router();
 
-const calcularEstadisticas = (results) => {
-  if (!results || results.length === 0) {
-    return null;
-  }
-
-  const precios = results.map((item) => item.price).sort((a, b) => a - b);
-
-  const cantidad = precios.length;
-  const precioMinimo = precios[0];
-  const precioMaximo = precios[cantidad - 1];
-  const rango = Math.round(precioMaximo - precioMinimo);
-
-  // Media
-  const suma = precios.reduce((acc, precio) => acc + precio, 0);
-  const media = Math.round(suma / cantidad);
-
-  // Mediana
-  let mediana;
-  if (cantidad % 2 === 0) {
-    mediana = Math.round(
-      (precios[cantidad / 2 - 1] + precios[cantidad / 2]) / 2
-    );
-  } else {
-    mediana = precios[Math.floor(cantidad / 2)];
-  }
-
-  return {
-    cantidad,
-    precioMinimo,
-    precioMaximo,
-    rango,
-    media,
-    mediana,
-  };
-};
-
-router.get("/precios-query", async (req, res) => {
-  const { q } = req.query;
-
-  if (!q) {
-    return res.status(400).json({ error: "q es requerido" });
-  }
-
+async function obtenerPrecioMinimo(gtin, nombre = "", precioMinimo = 0) {
   try {
-    const api = MercadoLibreAPI.getInstance();
-    const resultado = await api.getProductPriceByQuery(q);
+    const precioMinimoNum = parseFloat(precioMinimo) || 0;
+    const prices = await scrapeMeliPrices(gtin, 1, precioMinimoNum, nombre);
 
-    const estadisticas = calcularEstadisticas(resultado.results);
+    if (!prices.success) {
+      return {
+        success: false,
+        error: prices.error,
+        gtin,
+      };
+    }
 
-    res.json({
-      query: q,
-      estadisticas,
-      productsFound: resultado.productsFound,
-      itemsFound: resultado.itemsFound,
-      results: resultado.results,
-    });
+    if (prices.title && prices.price) {
+      return {
+        success: true,
+        gtin,
+        searchTerm: prices.searchTerm,
+        title: prices.title,
+        price: prices.price,
+        link: prices.link,
+        productId: prices.productId,
+        seller_id: prices.seller_id,
+        item_id: prices.item_id,
+        seller_nickname: prices.seller_nickname,
+        seller_data: prices.seller_data,
+        shipping_options: prices.shipping_options,
+      };
+    }
+
+    if (Array.isArray(prices) && prices[0] && prices[0].results) {
+      const results = [];
+      prices[0].results.forEach((price) => {
+        results.push({
+          title: price.title,
+          price: price.price,
+          link: price.link,
+          productId: price.productId,
+        });
+      });
+      return {
+        success: true,
+        gtin,
+        results,
+      };
+    }
+
+    return {
+      success: false,
+      message: prices.error || "No se encontraron resultados",
+      gtin,
+    };
   } catch (error) {
-    console.error("Error al obtener productos:", error);
-    res.status(500).json({ error: "Error al obtener productos" });
+    console.error(`Error procesando GTIN ${gtin}:`, error);
+    return {
+      success: false,
+      error: error.message,
+      gtin,
+    };
   }
-});
+}
 
 router.get("/precios-gtin", async (req, res) => {
   const { gtin } = req.query;
@@ -90,75 +97,6 @@ router.get("/precios-gtin", async (req, res) => {
   } catch (error) {
     console.error("Error al obtener productos:", error);
     res.status(500).json({ error: "Error al obtener productos" });
-  }
-});
-
-router.get("/precio-minimo-query", async (req, res) => {
-  const { q, condition, international_delivery_mode } = req.query;
-
-  if (!q) {
-    return res.status(400).json({ error: "q es requerido" });
-  }
-
-  try {
-    const api = MercadoLibreAPI.getInstance();
-    const resultado = await api.getProductPriceByQuery(q);
-
-    if (!resultado.results || resultado.results.length === 0) {
-      return res.json({
-        precioMinimo: null,
-        mensaje: "No se encontraron productos",
-      });
-    }
-
-    let resultadosFiltrados = resultado.results;
-
-    if (condition) {
-      resultadosFiltrados = resultadosFiltrados.filter(
-        (item) => item.condition === condition
-      );
-    }
-
-    if (international_delivery_mode) {
-      resultadosFiltrados = resultadosFiltrados.filter(
-        (item) =>
-          item.international_delivery_mode === international_delivery_mode
-      );
-    }
-
-    if (resultadosFiltrados.length === 0) {
-      return res.json({
-        precioMinimo: null,
-        mensaje: "No se encontraron productos con los filtros especificados",
-        filtrosAplicados: {
-          condition,
-          international_delivery_mode,
-        },
-      });
-    }
-
-    const itemConPrecioMinimo = resultadosFiltrados.reduce((min, item) =>
-      item.price < min.price ? item : min
-    );
-
-    const precioMinimo = itemConPrecioMinimo.price;
-    const itemId = itemConPrecioMinimo.id;
-
-    res.json({
-      precioMinimo,
-      query: q,
-      itemId,
-      itemDetail: itemConPrecioMinimo,
-      filtrosAplicados: {
-        condition,
-        international_delivery_mode,
-      },
-      totalResultados: resultado.results.length,
-      resultadosFiltrados: resultadosFiltrados.length,
-    });
-  } catch (error) {
-    console.error("Error al obtener precio mínimo:", error);
-    res.status(500).json({ error: "Error al obtener precio mínimo" });
   }
 });
 
@@ -253,101 +191,218 @@ router.get("/precio-minimo-gtin", async (req, res) => {
   }
 });
 
-router.get("/buscar-todos-vendedores", async (req, res) => {
-  const { q, include_global = false } = req.query;
+//upc, texto, minPrice
+router.get("/precioMinimo", async (req, res) => {
+  const { asin, nombre, precioMinimo } = req.query;
 
-  if (!q) {
-    return res.status(400).json({ error: "q es requerido" });
+  if (!asin) {
+    return res.status(400).json({ error: "asin es requerido" });
   }
 
   try {
-    const api = MercadoLibreAPI.getInstance();
+    const resultado = await obtenerPrecioMinimo(asin, nombre, precioMinimo);
 
-    // Usar el endpoint de búsqueda del sitio que debería traer todos los vendedores
-    const resultado = await api.searchProductsBySite(q, { include_global });
+    if (resultado.success) {
+      if (resultado.title && resultado.price) {
+        return res.json({
+          mensaje: "Producto encontrado con un vendedor con mas de 10 ventas",
+          result: {
+            searchTerm: resultado.searchTerm,
+            title: resultado.title,
+            price: resultado.price,
+            link: resultado.link,
+            productId: resultado.productId,
+            seller_id: resultado.seller_id,
+            item_id: resultado.item_id,
+            seller_nickname: resultado.seller_nickname,
+            seller_data: resultado.seller_data,
+            shipping_options: resultado.shipping_options,
+          },
+        });
+      }
 
-    res.json({
-      query: q,
-      include_global,
-      site_id: include_global ? "CBT" : "MLA",
-      totalResults: resultado.paging?.total || 0,
-      results: resultado.results || [],
-    });
-  } catch (error) {
-    console.error("Error al buscar productos:", error);
-    res.status(500).json({ error: "Error al buscar productos" });
-  }
-});
+      // Si es un array de resultados
+      if (resultado.results) {
+        return res.json(resultado.results);
+      }
+    } else {
+      return res.json({
+        mensaje: resultado.error,
+        results: [],
+      });
+    }
 
-router.get("/test", async (req, res) => {
-  const api = MercadoLibreAPI.getInstance();
-  const response = await api.getProductDetail("MLA24142523");
-
-  res.json(response);
-});
-
-router.get("/test1", async (req, res) => {
-  const api = MercadoLibreAPI.getInstance();
-  const response = await api.getSellerReputation("2153421531");
-
-  res.json(response);
-});
-
-//upc, texto, minPrice
-router.get("/precioMinimo", async (req, res) => {
-  const { gtin, nombre, precioMinimo } = req.query;
-
-  if (!gtin) {
-    return res.status(400).json({ error: "gtin es requerido" });
-  }
-
-  const precioMinimoNum = precioMinimo ? parseFloat(precioMinimo) : 0;
-  const prices = await scrapeMeliPrices(gtin, 1, precioMinimoNum, nombre);
-
-  if (!prices) {
     return res.json({
-      mensaje:
-        "No se encontraron productos con vendedores de reputación 5_green",
+      mensaje: "No se encontraron resultados para el GTIN proporcionado",
       results: [],
     });
+  } catch (error) {
+    console.error(`Error en endpoint precioMinimo para ASIN ${asin}:`, error);
+    return res.status(500).json({
+      error: "Error interno del servidor",
+      mensaje: error.message,
+    });
   }
+});
 
-  // Si prices es un objeto individual (cuando filterByReputation = true)
-  if (prices.title && prices.price) {
-    return res.json({
-      mensaje: "Producto encontrado con vendedor de reputación 5_green",
-      result: {
-        searchTerm: prices.searchTerm,
-        title: prices.title,
-        price: prices.price,
-        link: prices.link,
-        productId: prices.productId,
-        seller_id: prices.seller_id,
-        item_id: prices.item_id,
-        seller_nickname: prices.seller_nickname,
-        seller_data: prices.seller_data,
-        shipping_options: prices.shipping_options,
-      },
+// Endpoint para procesar múltiples GTINs
+router.get("/precioMinimos", async (req, res) => {
+  const tiempoInicio = Date.now();
+  const { gtins = [], nombre = "", precioMinimo = 0 } = req.body;
+
+  if (!gtins.length) {
+    return res.status(400).json({
+      error: "Se requiere un array de GTINs",
     });
   }
 
-  // Si prices es un array (cuando filterByReputation = false)
-  if (Array.isArray(prices) && prices[0] && prices[0].results) {
-    const results = [];
-    prices[0].results.forEach((price) => {
-      results.push({
-        title: price.title,
-        price: price.price,
-        link: price.link,
-        productId: price.productId,
-      });
-    });
-    return res.json(results);
+  console.log("Procesando GTINs:", gtins);
+
+  const resultados = {};
+  let procesados = 0;
+  let exitosos = 0;
+
+  for (const gtin of gtins) {
+    try {
+      console.log(`Procesando GTIN ${procesados + 1}/${gtins.length}: ${gtin}`);
+      const resultado = await obtenerPrecioMinimo(gtin, nombre, precioMinimo);
+
+      resultados[gtin] = resultado;
+
+      if (resultado.success) {
+        exitosos++;
+      }
+
+      procesados++;
+
+      // Pequeña pausa entre requests para evitar sobrecarga
+      if (procesados < gtins.length) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    } catch (error) {
+      console.error(`Error procesando GTIN ${gtin}:`, error);
+      resultados[gtin] = {
+        success: false,
+        error: error.message,
+        gtin,
+      };
+      procesados++;
+    }
   }
 
-  return res.json({
-    mensaje: "No se encontraron resultados para el GTIN proporcionado",
-    results: [],
+  const tiempoTotal = Date.now() - tiempoInicio;
+
+  // Calcular estadísticas
+  const estadisticas = {
+    total: gtins.length,
+    procesados,
+    exitosos,
+    fallidos: procesados - exitosos,
+    tasa_exito:
+      procesados > 0 ? `${Math.round((exitosos / procesados) * 100)}%` : "0%",
+    tiempo: `${Math.round((tiempoTotal / 1000) * 100) / 100} segundos`,
+  };
+
+  res.json({
+    estadisticas,
+    resultados,
+  });
+});
+
+router.get("/comparar-precios", async (req, res) => {
+  const tiempoInicio = Date.now();
+
+  const asins = handleCSVCodigosToJSON();
+
+  if (!asins.length) {
+    return res.status(400).json({
+      error: "No se pudieron leer códigos del CSV",
+    });
+  }
+
+  const resultados = {
+    mercadolibre: [],
+    timestamp: new Date().toISOString(),
+  };
+
+  if (asins.length > 0) {
+    for (const asin of asins) {
+      try {
+        const randomDelay = Math.random() * 5000 + 4000; // 3-8 segundos
+        await delay(randomDelay);
+        const resultado = await obtenerPrecioMinimo(asin, "", 0);
+
+        if (resultado.success) {
+          escribirResultadoExitoso(
+            asin,
+            resultado.price,
+            resultado.title,
+            resultado.link || ""
+          );
+
+          resultados.mercadolibre.push({
+            asin,
+            ...resultado,
+          });
+        } else {
+          escribirResultadoError(
+            asin,
+            resultado.error || resultado.message || "Error desconocido"
+          );
+
+          resultados.mercadolibre.push({
+            asin,
+            error: resultado.error,
+          });
+        }
+      } catch (error) {
+        console.error(`Error procesando ASIN ${asin}:`, error);
+
+        escribirResultadoError(asin, error.message);
+
+        resultados.mercadolibre.push({
+          asin,
+          success: false,
+          error: error.message,
+        });
+      }
+    }
+  }
+
+  // Calcular estadísticas
+  const mlExitosos = resultados.mercadolibre.filter((r) => r.success);
+
+  const tiempoTotal = Date.now() - tiempoInicio;
+
+  const estadisticas = {
+    mercadolibre: {
+      total: resultados.mercadolibre.length,
+      exitosos: mlExitosos.length,
+      precio_promedio:
+        mlExitosos.length > 0
+          ? Math.round(
+              mlExitosos.reduce((sum, r) => sum + r.precio, 0) /
+                mlExitosos.length
+            )
+          : 0,
+      precio_minimo:
+        mlExitosos.length > 0
+          ? Math.min(...mlExitosos.map((r) => r.precio))
+          : 0,
+      precio_maximo:
+        mlExitosos.length > 0
+          ? Math.max(...mlExitosos.map((r) => r.precio))
+          : 0,
+    },
+    tiempo: `${Math.round((tiempoTotal / 1000) * 100) / 100} segundos`,
+    tiempo_promedio_por_item_ms:
+      asins.length > 0 ? Math.round(tiempoTotal / asins.length) : 0,
+    tiempo_respuesta_ms: tiempoTotal,
+  };
+
+  res.json({
+    ...resultados,
+    estadisticas,
   });
 });
 

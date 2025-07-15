@@ -1,16 +1,104 @@
 const express = require("express");
+const calcularPrecio = require("../Utiles/pricing");
+const axios = require("axios");
+const { asin_list } = require("../Utiles/helpersScrapping");
+const { getProductKeepa } = require("../Utiles/keepa");
 const router = express.Router();
-const keepaService = require("../Utiles/keepaService");
 
-router.post("/consultar-precio", keepaService);
+async function obtenerPrecioKeepa(asin) {
+  const asinClean = asin.substring(0, 10);
+  const url = `https://api.keepa.com/product?key=${process.env.KEEPPA_KEY}&domain=1&asin=${asinClean}`;
+
+  try {
+    const { data } = await axios.get(url);
+    const product = data.products[0];
+    console.log("productKeepa", product);
+    if (!product) {
+      return {
+        success: false,
+        error: "Producto no encontrado",
+        asin: asinClean,
+      };
+    }
+
+    let newPrice =
+      (product.csv?.[1]?.slice(-1)[0] ?? product.csv?.[0]?.slice(-1)[0]) || 0;
+    let packageWeight = product.packageWeight || product.itemWeight || 0;
+
+    if (asin_list.includes(asinClean)) {
+      newPrice = newPrice * 0.92;
+    }
+
+    if (
+      (!packageWeight || packageWeight === "N/A" || packageWeight === 0) &&
+      newPrice > 200
+    )
+      packageWeight = 20000;
+
+    if (!newPrice || !packageWeight) {
+      return {
+        success: false,
+        error: "Faltan datos para el cálculo (precio o peso)",
+        asin: asinClean,
+      };
+    }
+
+    const precios = calcularPrecio({
+      newPrice,
+      packageWeight,
+      categoryTree: product.categoryTree || [],
+    });
+
+    return {
+      success: true,
+      asin: asinClean,
+      precio_amazon: newPrice,
+      peso: packageWeight,
+      precios_calculados: precios,
+      titulo: product.title,
+      categoria: product.categoryTree,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      asin: asinClean,
+    };
+  }
+}
+
+router.get("/consultar-precio/:asin", async (req, res) => {
+  const { asin } = req.params;
+
+  if (!asin) {
+    return res.status(400).json({
+      success: false,
+      error: "ASIN es requerido",
+    });
+  }
+
+  const resultado = await obtenerPrecioKeepa(asin);
+
+  if (resultado.success) {
+    res.json({
+      success: true,
+      precios: resultado.precios_calculados,
+      title: resultado.titulo,
+    });
+  } else {
+    res.json({
+      success: false,
+      error: resultado.error,
+    });
+  }
+});
 
 router.get("/producto/:asin", async (req, res) => {
   const { asin } = req.params;
-  const url = `https://api.keepa.com/product?key=${process.env.KEEPPA_KEY}&domain=1&asin=${asin}`;
 
   try {
-    const axios = require("axios");
-    const { data } = await axios.get(url);
+    const data = await getProductKeepa(asin);
+    console.log("dataKeepa", data);
     const product = data.products[0];
 
     if (!product) {
@@ -47,4 +135,4 @@ router.get("/config", (req, res) => {
   });
 });
 
-module.exports = router;
+module.exports = { router, obtenerPrecioKeepa };
