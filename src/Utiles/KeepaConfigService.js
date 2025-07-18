@@ -10,7 +10,7 @@ const {
 const KeepaConfigService = {
   cache: null,
   lastFetchTime: null,
-  CACHE_DURATION_MS: 30 * 60 * 1000, // 30 minutos
+  CACHE_DURATION_MS: 1000, // 30 minutos
   SHEET_NAME: "KeepaConfig",
   RANGE: "A1:B100",
 
