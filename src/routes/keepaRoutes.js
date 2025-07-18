@@ -127,8 +127,9 @@ router.get("/producto/:asin", async (req, res) => {
   }
 });
 
-router.get("/config", (req, res) => {
-  const config = require("../../config/keepaConfig");
+router.get("/config", async (req, res) => {
+  const KeepaConfigService = require("../Utiles/KeepaConfigService");
+  const config = await KeepaConfigService.obtenerConfiguracion();
   res.json({
     success: true,
     config,
