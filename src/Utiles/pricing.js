@@ -2,6 +2,7 @@ const KeepaConfigService = require("./KeepaConfigService");
 
 async function calcularPrecio({ newPrice, packageWeight, categoryTree }) {
   const config = await KeepaConfigService.obtenerConfiguracion();
+  console.log("configKeepa", config);
 
   const specialOld = [13896617011, 2642129011, 193870011];
   const specialNew = [172421, 4943760011, 11910405011];

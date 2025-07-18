@@ -63,6 +63,7 @@ const crearMensajePrecios = (resultado) => {
   const { titulo, precio_amazon, peso, precios_calculados, categoria } =
     resultado;
 
+  console.log("resultadoKeepa", resultado);
   // Formatear el peso en kg
   const pesoKg = (peso / 1000).toFixed(2);
 

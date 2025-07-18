@@ -43,7 +43,7 @@ async function obtenerPrecioKeepa(asin) {
       };
     }
 
-    const precios = calcularPrecio({
+    const precios = await calcularPrecio({
       newPrice,
       packageWeight,
       categoryTree: product.categoryTree || [],
