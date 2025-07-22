@@ -13,6 +13,16 @@ async function obtenerPrecioKeepa(asin) {
     const { data } = await axios.get(url);
     const product = data.products[0];
     console.log("productKeepa", product);
+
+    console.log("product.availabilityAmazon", product.availabilityAmazon);
+    if (product.availabilityAmazon == -1 || product.availabilityAmazon == 0) {
+      return {
+        success: false,
+        error: "Producto no disponible en Amazon",
+        asin: asinClean,
+      };
+    }
+
     if (!product) {
       return {
         success: false,

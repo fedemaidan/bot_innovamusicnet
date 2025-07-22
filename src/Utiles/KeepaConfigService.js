@@ -9,11 +9,52 @@ const {
 
 const KeepaConfigService = {
   cache: null,
+  cacheMessages: null,
   lastFetchTime: null,
-  CACHE_DURATION_MS: 1000, // 30 minutos
+  CACHE_DURATION_MS: 1000,
   SHEET_NAME: "KeepaConfig",
-  RANGE: "A1:B100",
+  SHEET_NAME_MESSAGES: "Mensajes",
 
+  async obtenerMensajesConfiguracion() {
+    const now = Date.now();
+
+    if (
+      this.cacheMessages &&
+      now - this.lastFetchTime < this.CACHE_DURATION_MS
+    ) {
+      return this.cacheMessages;
+    }
+
+    const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
+    const sheetExists = await checkIfSheetExists(
+      GOOGLE_SHEET_ID,
+      this.SHEET_NAME_MESSAGES
+    );
+    if (!sheetExists) {
+      return;
+    }
+
+    const rows = await getRowsValues(
+      GOOGLE_SHEET_ID,
+      this.SHEET_NAME_MESSAGES,
+      "A2:B100"
+    );
+
+    const mensajes = {};
+
+    for (const row of rows) {
+      if (row.length >= 2 && row[0] && row[1]) {
+        const key = row[0].trim();
+        const value = row[1];
+        mensajes[key] = value;
+      }
+    }
+
+    this.cacheMessages = mensajes;
+    this.lastFetchTime = now;
+
+    return mensajes;
+  },
   async obtenerConfiguracion() {
     const now = Date.now();
 
@@ -70,34 +111,6 @@ const KeepaConfigService = {
       // Si no hay caché, devolver configuración por defecto
       console.log("⚠️ Usando configuración por defecto");
       return this.getConfiguracionPorDefecto();
-    }
-  },
-
-  async crearHojaConfiguracionInicial(GOOGLE_SHEET_ID) {
-    try {
-      // Crear la hoja
-      await createSheet(GOOGLE_SHEET_ID, this.SHEET_NAME);
-
-      // Obtener configuración por defecto
-      const configPorDefecto = this.getConfiguracionPorDefecto();
-
-      // Crear filas con los valores por defecto
-      const rows = [
-        ["KEY", "VALOR"], // Header
-        ...Object.entries(configPorDefecto).map(([key, value]) => [key, value]),
-      ];
-
-      // Agregar cada fila
-      for (let i = 1; i < rows.length; i++) {
-        await addRow(GOOGLE_SHEET_ID, rows[i], `${this.SHEET_NAME}!A1:B100`);
-      }
-
-      console.log(
-        "✅ Hoja de configuración de Keepa creada con valores por defecto"
-      );
-    } catch (error) {
-      console.error("❌ Error al crear hoja de configuración inicial:", error);
-      throw error;
     }
   },
 
@@ -160,51 +173,6 @@ const KeepaConfigService = {
     return configuracion[key];
   },
 
-  async obtenerDolarInova() {
-    return await this.obtenerValor("DOLARINOVA");
-  },
-
-  async obtenerDolarOficial() {
-    return await this.obtenerValor("DOLAROFICIAL");
-  },
-
-  async obtenerDolarOperativo() {
-    return await this.obtenerValor("DOLAROPERATIVO");
-  },
-
-  async obtenerCostoFijo() {
-    return await this.obtenerValor("COSTOFIJO");
-  },
-
-  async obtenerFleteXKg() {
-    return await this.obtenerValor("FLETEXKG");
-  },
-
-  async obtenerRatioP() {
-    return await this.obtenerValor("RATIOP");
-  },
-
-  async obtenerRatioC() {
-    return await this.obtenerValor("RATIOC");
-  },
-
-  async obtenerRatioN() {
-    return await this.obtenerValor("RATION");
-  },
-
-  async obtenerRecargoTarjeta() {
-    return await this.obtenerValor("RECARGOTARJETA");
-  },
-
-  async obtenerDescEfectivo() {
-    return await this.obtenerValor("DESCEFECTIVO");
-  },
-
-  async obtenerDescTransferencia() {
-    return await this.obtenerValor("DESCTRANSFERENCIA");
-  },
-
-  // Método para limpiar caché manualmente
   limpiarCache() {
     this.cache = null;
     this.lastFetchTime = null;
