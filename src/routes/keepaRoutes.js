@@ -14,15 +14,6 @@ async function obtenerPrecioKeepa(asin) {
     const product = data.products[0];
     console.log("productKeepa", product);
 
-    console.log("product.availabilityAmazon", product.availabilityAmazon);
-    if (product.availabilityAmazon == -1 || product.availabilityAmazon == 0) {
-      return {
-        success: false,
-        error: "Producto no disponible en Amazon",
-        asin: asinClean,
-      };
-    }
-
     if (!product) {
       return {
         success: false,
@@ -39,16 +30,23 @@ async function obtenerPrecioKeepa(asin) {
       newPrice = newPrice * 0.92;
     }
 
-    if (
-      (!packageWeight || packageWeight === "N/A" || packageWeight === 0) &&
-      newPrice > 200
-    )
-      packageWeight = 20000;
+    if (!packageWeight || packageWeight === "N/A" || packageWeight === 0) {
+      if (newPrice > 200) {
+        packageWeight = 20000;
+      }
+    }
 
-    if (!newPrice || !packageWeight) {
+    if (
+      newPrice == "N/A" ||
+      newPrice < 10 ||
+      packageWeight == "N/A" ||
+      packageWeight == 0 ||
+      !newPrice ||
+      !packageWeight
+    ) {
       return {
         success: false,
-        error: "Faltan datos para el cálculo (precio o peso)",
+        error: "No disponible en Amazon",
         asin: asinClean,
       };
     }

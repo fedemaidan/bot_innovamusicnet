@@ -1,9 +1,18 @@
-const general_range = "Cotizaciones!A1:F100000";
+const general_range = "Cotizaciones!A1:G100000";
 
 const { addRow } = require("../../../services/google/General");
 
 const getTitlesToSheetGeneral = () => {
-  return ["Fecha", "Hora", "Link", "SKU", "Precio 1", "Precio 2", "Precio 3"];
+  return [
+    "Fecha",
+    "Hora",
+    "Telefono",
+    "Link",
+    "SKU",
+    "Precio 1",
+    "Precio 2",
+    "Precio 3",
+  ];
 };
 
 async function getArrayToSheetGeneral(cotizacion) {
@@ -19,6 +28,7 @@ async function getArrayToSheetGeneral(cotizacion) {
   const values = [
     fecha,
     hora,
+    cotizacion.phoneNumber,
     cotizacion.link,
     cotizacion.asin,
     cotizacion.precio,

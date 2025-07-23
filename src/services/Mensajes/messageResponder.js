@@ -51,6 +51,8 @@ const getLinkFromMessage = (msg) => {
 };
 
 const messageResponder = async (messageType, msg, sock, sender) => {
+  const phoneNumber = sender.split("@")[0];
+
   switch (messageType) {
     case "text":
     case "text_extended": {
@@ -63,7 +65,7 @@ const messageResponder = async (messageType, msg, sock, sender) => {
       console.log("link extraído:", link);
 
       if (!asin) {
-        const mensaje = mensajes["NO_SKU"];
+        const mensaje = mensajes.NO_SKU;
         await sock.sendMessage(sender, { text: mensaje });
         return;
       }
@@ -76,11 +78,12 @@ const messageResponder = async (messageType, msg, sock, sender) => {
           link,
           asin,
           precio: resultado.precios_calculados.efectivoUSD,
+          phoneNumber,
         });
         await sock.sendMessage(sender, { text: mensajePrecios });
       } else if (
         !resultado.success &&
-        resultado.error === "Producto no disponible en Amazon"
+        resultado.error === "No disponible en Amazon"
       ) {
         await sock.sendMessage(sender, {
           text: mensajes.NO_DISPONIBILIDAD,
