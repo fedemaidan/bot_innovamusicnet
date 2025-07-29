@@ -1,6 +1,5 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
 const { obtenerPrecioKeepa } = require("../../../routes/keepaRoutes");
-const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
 const {
   addCotizacionToSheet,
 } = require("../../../Utiles/Google/Sheets/contizaciones");
@@ -23,6 +22,7 @@ const { scrapeMeliPrices } = require("../../../Utiles/webScrapping");
 
 module.exports = async function BuscarConASINStep(userId, data) {
   console.log("BuscarConASINStep", data);
+  const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
   const sock = sockSingleton.getSock();
   const phoneNumber = userId.split("@")[0];
   const asin = data.asinRegular || data.asin;

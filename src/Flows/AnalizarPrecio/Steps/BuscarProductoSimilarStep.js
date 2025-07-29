@@ -1,6 +1,7 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
 const { getProductByWebSearch } = require("../../../services/Chatgpt/Base");
 const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
+const KeepaConfigService = require("../../../Utiles/KeepaConfigService");
 const {
   extractASINFromAmazonLink,
 } = require("../../../Utiles/Mensajes/mensajesMariano");
@@ -18,7 +19,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
     console.log("ASIN extraido:", asin);
 
     if (asin) {
-      FlowManager.setFlow(userId, "ANALIZAR_PRECIO", "BuscarConASINStep", {
+      BuscarConASINStep(userId, {
         asin,
         producto: data.producto,
         retry: false,

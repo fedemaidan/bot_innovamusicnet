@@ -6,7 +6,7 @@ const AnalizarPrecioFlow = {
   async start(userId, data) {
     if (userId != null) {
       console.log("AnalizarPrecioFlowStartData", data);
-      if (data.asinRegular != null || data.asin != null) {
+      if (data.asinRegular != null || (data.asin != null && data.asin != "-")) {
         await AnalizarPrecioSteps.BuscarConASINStep(userId, data);
       } else {
         await AnalizarPrecioSteps.BuscarSinASINStep(userId, data);

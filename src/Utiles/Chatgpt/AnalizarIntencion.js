@@ -6,9 +6,9 @@ const opciones = [
     accion: "Info Precio",
     descripcion: "Obtener el precio o informacion de un producto.",
     data: {
-      asin: "ASIN del producto. (suele estas seguido de 'SKU:')",
-      link: "Link del producto.",
-      producto: "Nombre completo del producto.",
+      asin: "ASIN del producto. (suele estas seguido de 'SKU:'). Si no lo tiene, devolve '-'",
+      link: "Link del producto. Si no lo tiene, devolve '-'",
+      producto: "Nombre completo del producto. Si no lo tiene, devolve '-'",
     },
   },
   {
