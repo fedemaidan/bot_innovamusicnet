@@ -1,8 +1,12 @@
 const { analizarIntencion } = require("../../Utiles/Chatgpt/AnalizarIntencion");
-const FlujoEjemploFlow = require("../EJEMPLO/FlujoEjemploFlow");
+const {
+  getAsinFromMessage,
+  getLinkFromMessage,
+} = require("../../Utiles/Mensajes/mensajesMariano");
+const AnalizarPrecioFlow = require("../AnalizarPrecio/AnalizarPrecioFlow");
 
 const defaultFlow = {
-  async Init(userId, message, sock, messageType) {
+  async Init(userId, message, messageType) {
     try {
       //si es texto se analiza en cambio si es una imagen o documento o document-caption este ya se encuentra analizado y salta el "Analizar intencion"
       let result;
@@ -21,15 +25,18 @@ const defaultFlow = {
       //Aqui van todas las ACCIONES que se encuentran en analizar intencion. El json y este switch deben hacer MATCH
       //Se encarga de Enrutar  los datos al flujo que el usuario se esta dirijiendo.
       switch (result.accion) {
-        case "Accion_ejemplo":
-          FlujoEjemploFlow.start(userId, { data: result.data }, sock);
+        case "Info Precio":
+          const asinRegular = getAsinFromMessage(message);
+          const linkRegular = getLinkFromMessage(message);
+          AnalizarPrecioFlow.start(userId, {
+            ...result.data,
+            asinRegular: asinRegular,
+            linkRegular: linkRegular,
+          });
           break;
 
         case "No comprendido":
-          await sock.sendMessage(userId, {
-            text: "😕 No comprendi tu mensaje,❌ o no poseés los permisos necesarios  para esta acción. Por favor, repetilo.",
-          });
-          FlowManager.resetFlow(userId);
+          console.log("NO COMPRENDIDO");
           break;
 
         case "NoRegistrado":
@@ -43,10 +50,8 @@ const defaultFlow = {
     }
   },
 
-  async handle(userId, message, sock) {
-    await sock.sendMessage(userId, {
-      text: "No entendi tu mensaje, porfavor repitelo",
-    });
+  async handle(userId, message) {
+    console.log("Handle INIT FLOW");
   },
 };
 

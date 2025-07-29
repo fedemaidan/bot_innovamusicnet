@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/fedemaidan/asistente-operativo-interno#readme",
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.17.16",
+    "@whiskeysockets/baileys": "^6.7.18",
     "axios": "^1.9.0",
     "cheerio": "^1.1.0",
     "cors": "^2.8.5",

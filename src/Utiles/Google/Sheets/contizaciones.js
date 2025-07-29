@@ -1,6 +1,11 @@
-const general_range = "Cotizaciones!A1:G100000";
+const general_range = "Cotizaciones!A1:I1000";
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
 
-const { addRow } = require("../../../services/google/General");
+const {
+  addRow,
+  updateRow,
+  getRowsValues,
+} = require("../../../services/google/General");
 
 const getTitlesToSheetGeneral = () => {
   return [
@@ -10,8 +15,9 @@ const getTitlesToSheetGeneral = () => {
     "Link",
     "SKU",
     "Precio 1",
-    "Precio 2",
-    "Precio 3",
+    "Precio Meli",
+    "Link Meli",
+    "Link WebSearch",
   ];
 };
 
@@ -31,19 +37,38 @@ async function getArrayToSheetGeneral(cotizacion) {
     fecha,
     hora,
     cotizacion.phoneNumber,
-    cotizacion.link,
-    cotizacion.asin,
-    cotizacion.precio,
+    cotizacion.link ?? "-",
+    cotizacion.asin ?? "-",
+    cotizacion.precioKeepa ?? "-",
+    cotizacion.precioMeli ?? "-",
+    cotizacion.linkMeli ?? "-",
+    cotizacion.linkWebSearch ?? "-",
   ];
   return values;
 }
 
+async function addEmailToSheet(email, phoneNumber) {
+  const values = await getRowsValues(GOOGLE_SHEET_ID, "Emails", "A1:B1000");
+  const rowValues = values.find((row) => row[0] === phoneNumber);
+
+  if (rowValues) {
+    rowValues[1] = email;
+    await updateRow(
+      GOOGLE_SHEET_ID,
+      rowValues,
+      "Emails!A1:B1000",
+      0,
+      phoneNumber
+    );
+  } else {
+    await addRow(GOOGLE_SHEET_ID, [phoneNumber, email], "Emails!A1:B1000");
+  }
+}
+
 async function addCotizacionToSheet(cotizacion) {
   try {
-    const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
-    const headers = getTitlesToSheetGeneral();
     const values = await getArrayToSheetGeneral(cotizacion);
-    await addRow(GOOGLE_SHEET_ID, values, general_range, headers);
+    await addRow(GOOGLE_SHEET_ID, values, general_range);
     return "";
   } catch (error) {
     console.error("Error al agregar cotización:", error);
@@ -53,4 +78,5 @@ async function addCotizacionToSheet(cotizacion) {
 
 module.exports = {
   addCotizacionToSheet,
+  addEmailToSheet,
 };
