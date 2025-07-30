@@ -26,7 +26,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
   );
 
   console.log("linkAmazon", linkAmazon);
-  if (linkAmazon && !linkAmazon.startsWith("https")) {
+  if (!linkAmazon || (linkAmazon && !linkAmazon.startsWith("https"))) {
     await sock.sendMessage(userId, {
       text: "No se pudo encontrar un producto alternativo",
     });
@@ -35,7 +35,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
   }
 
   sock.sendMessage(userId, {
-    text: "**link del producto alternativo de web search:** \n" + linkAmazon,
+    text: "*link del producto alternativo de web search:* \n" + linkAmazon,
   });
   console.log("linkAmazon", linkAmazon);
 
