@@ -4,9 +4,11 @@ const KeepaConfigService = require("../../../Utiles/KeepaConfigService");
 const {
   extractASINFromAmazonLink,
 } = require("../../../Utiles/Mensajes/mensajesMariano");
-const BuscarConASINStep = require("./BuscarConASINStep");
 
 module.exports = async function BuscarProductoSimilarStep(userId, data) {
+  const BuscarConASINStep = require("./BuscarConASINStep");
+  console.log("BuscarConASINStep type:", typeof BuscarConASINStep);
+  console.log("BuscarConASINStep:", BuscarConASINStep);
   console.log("BuscarProductoSimilarStep", data);
   const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
   const sock = sockSingleton.getSock();
@@ -17,8 +19,13 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
 
   const mensajes = await KeepaConfigService.obtenerMensajesConfiguracion();
 
-  const linkAmazon = await getProductByWebSearch(data.producto);
+  linkAmazonNoDisponible = data?.link?.includes("amazon");
 
+  const linkAmazon = await getProductByWebSearch(
+    data.producto + linkAmazonNoDisponible
+  );
+
+  console.log("linkAmazon", linkAmazon);
   if (!linkAmazon.startsWith("https")) {
     await sock.sendMessage(userId, {
       text: "No se pudo encontrar un producto alternativo",
@@ -37,7 +44,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
     console.log("ASIN extraido:", asin);
 
     if (asin) {
-      await BuscarConASINStep(userId, {
+      BuscarConASINStep(userId, {
         asin,
         producto: data.producto,
         retry: false,

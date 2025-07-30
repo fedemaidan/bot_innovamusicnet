@@ -7,7 +7,6 @@ const {
   crearMensajePrecios,
 } = require("../../../Utiles/Mensajes/mensajesMariano");
 const { scrapeMeliPrices } = require("../../../Utiles/webScrapping");
-const BuscarProductoSimilarStep = require("./BuscarProductoSimilarStep");
 
 /**
  {
@@ -18,16 +17,18 @@ const BuscarProductoSimilarStep = require("./BuscarProductoSimilarStep");
   linkRegular,
   retry?: boolean 
   linkWebSearch?: string
- }
- */
+  }
+  */
 
 module.exports = async function BuscarConASINStep(userId, data) {
+  const BuscarProductoSimilarStep = require("./BuscarProductoSimilarStep");
   console.log("BuscarConASINStep", data);
   const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
   const sock = sockSingleton.getSock();
   const phoneNumber = userId.split("@")[0];
   const asin = data.asinRegular || data.asin;
   const link = data.linkRegular || data.link;
+  const retry = data?.retry || true;
 
   sock.sendMessage(userId, {
     text: `Buscando producto con el codigo ASIN ${asin} ...`,
@@ -60,12 +61,15 @@ module.exports = async function BuscarConASINStep(userId, data) {
   } else if (
     !resultadoKeepa.success &&
     resultadoKeepa.error === "No disponible en Amazon" &&
-    !data.retry
+    retry
   ) {
     sock.sendMessage(userId, {
       text: `Producto no encontrado en Amazon, buscando producto alternativo a ${resultadoKeepa.titulo}...`,
     });
-    await BuscarProductoSimilarStep(userId, { producto: data.producto });
+    await BuscarProductoSimilarStep(userId, {
+      producto: resultadoKeepa.titulo,
+      link: data.link,
+    });
   } else {
     sock.sendMessage(userId, {
       text: "Error al obtener el precio de Amazon" + resultadoKeepa,

@@ -21,7 +21,7 @@ module.exports = async function BuscarSinASIN(userId, data) {
     console.log("ASIN extraido:", asin);
 
     if (asin) {
-      await BuscarConASINStep(userId, {
+      BuscarConASINStep(userId, {
         asin,
         producto: data.producto,
         linkWebSearch: linkAmazon,
