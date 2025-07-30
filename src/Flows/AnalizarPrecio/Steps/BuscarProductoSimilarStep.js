@@ -30,14 +30,18 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
     await sock.sendMessage(userId, {
       text: "No se pudo encontrar un producto alternativo",
     });
+    sock.sendMessage(userId, {
+      text:
+        "*input del web search:* \n" + data.producto + linkAmazonNoDisponible,
+    });
+    sock.sendMessage(userId, {
+      text: "*link del producto alternativo de web search:* \n" + linkAmazon,
+    });
+    console.log("linkAmazon", linkAmazon);
+
     FlowManager.resetFlow(userId);
     return;
   }
-
-  sock.sendMessage(userId, {
-    text: "*link del producto alternativo de web search:* \n" + linkAmazon,
-  });
-  console.log("linkAmazon", linkAmazon);
 
   if (linkAmazon.includes("amazon")) {
     const asin = extractASINFromAmazonLink(linkAmazon);
