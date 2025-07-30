@@ -5,10 +5,16 @@ const KeepaConfigService = require("../../../Utiles/KeepaConfigService");
 const {
   extractASINFromAmazonLink,
 } = require("../../../Utiles/Mensajes/mensajesMariano");
+const BuscarConASINStep = require("./BuscarConASINStep");
 
 module.exports = async function BuscarProductoSimilarStep(userId, data) {
   console.log("BuscarProductoSimilarStep", data);
   const sock = sockSingleton.getSock();
+
+  sock.sendMessage(userId, {
+    text: "Buscando producto alternativo ...",
+  });
+
   const mensajes = await KeepaConfigService.obtenerMensajesConfiguracion();
 
   const linkAmazon = await getProductByWebSearch(data.producto);

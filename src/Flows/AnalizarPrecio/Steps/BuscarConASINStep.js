@@ -28,6 +28,10 @@ module.exports = async function BuscarConASINStep(userId, data) {
   const asin = data.asinRegular || data.asin;
   const link = data.linkRegular || data.link;
 
+  sock.sendMessage(userId, {
+    text: `Buscando producto con el codigo ASIN ${asin} ...`,
+  });
+
   const resultadoKeepa = await obtenerPrecioKeepa(asin);
   const resultadoMeli = await scrapeMeliPrices(asin);
 
@@ -35,6 +39,9 @@ module.exports = async function BuscarConASINStep(userId, data) {
   console.log("resultadoMeli", resultadoMeli);
 
   if (resultadoKeepa && resultadoKeepa.success) {
+    sock.sendMessage(userId, {
+      text: `Producto encontrado en Amazon: ${resultadoKeepa.titulo}`,
+    });
     const mensajePrecios = await crearMensajePrecios(resultadoKeepa);
     await addCotizacionToSheet({
       link: link || "",
@@ -53,6 +60,9 @@ module.exports = async function BuscarConASINStep(userId, data) {
     resultadoKeepa.error === "No disponible en Amazon" &&
     !data.retry
   ) {
+    sock.sendMessage(userId, {
+      text: `Producto no encontrado en Amazon, buscando producto alternativo a ${resultadoKeepa.titulo}...`,
+    });
     FlowManager.setFlow(
       userId,
       "ANALIZAR_PRECIO",
@@ -62,7 +72,11 @@ module.exports = async function BuscarConASINStep(userId, data) {
       }
     );
   } else {
+    sock.sendMessage(userId, {
+      text: "Error al obtener el precio de Amazon" + resultadoKeepa,
+    });
     console.log("ERROR EN KEEPPA");
     console.log(resultadoKeepa);
+    FlowManager.resetFlow(userId);
   }
 };

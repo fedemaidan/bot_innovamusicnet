@@ -47,6 +47,7 @@ async function obtenerPrecioKeepa(asin) {
       return {
         success: false,
         error: "No disponible en Amazon",
+        titulo: product.title,
         asin: asinClean,
       };
     }

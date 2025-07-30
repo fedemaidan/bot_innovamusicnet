@@ -144,7 +144,12 @@ async function scrapeMeliBySearchTerm(
   for (let page = 1; page <= maxPages; page++) {
     // Delay más largo y aleatorio entre requests
     if (page > 1) {
-      const randomDelay = Math.random() * 5000 + 3000; // 3-8 segundos
+      const randomDelay = Math.random() * 20000 + 15000; // 15-35 segundos
+      console.log(
+        `⏳ Esperando ${Math.round(
+          randomDelay / 1000
+        )} segundos antes de la página ${page}...`
+      );
       await delay(randomDelay);
     }
 
@@ -231,6 +236,15 @@ async function scrapeMeliBySearchTerm(
 
       console.log("✅ HTML válido recibido, procesando resultados...");
 
+      // Delay antes de procesar los resultados
+      const processingDelay = Math.random() * 8000 + 5000; // 5-13 segundos
+      console.log(
+        `⏳ Esperando ${Math.round(
+          processingDelay / 1000
+        )} segundos antes de procesar resultados...`
+      );
+      await delay(processingDelay);
+
       const $ = cheerio.load(html);
 
       // Usar un bucle for...of en lugar de each() para manejar correctamente las promesas
@@ -258,7 +272,13 @@ async function scrapeMeliBySearchTerm(
         if (link && /\/p\/MLA\d+/.test(link)) {
           try {
             // Delay aleatorio antes de hacer el fetch del producto
-            await delay(Math.random() * 2000 + 1000);
+            const productDelay = Math.random() * 8000 + 5000; // 5-13 segundos
+            console.log(
+              `⏳ Esperando ${Math.round(
+                productDelay / 1000
+              )} segundos antes de obtener detalles del producto...`
+            );
+            await delay(productDelay);
 
             const resProd = await fetch(link, {
               headers: getRealisticHeaders(searchUrl),
@@ -391,6 +411,7 @@ async function scrapeMeliBySearchTerm(
   }
 
   console.log(`📊 Total de resultados encontrados: ${results.results.length}`);
+  console.log(`⏱️ Scrapping completado para: "${searchTerm}"`);
   return results;
 }
 
@@ -509,6 +530,7 @@ async function scrapeMeliPrices(
     if (!pub.link) {
       continue;
     }
+
     const sellerData = await getSellerIdFromPublication(pub.link);
     if (!sellerData || !sellerData.seller_id) {
       console.log("no se encontro el seller_id de la publicacion mas barata");
@@ -526,7 +548,16 @@ async function scrapeMeliPrices(
       let shippingOptions = null;
       if (sellerData.item_id) {
         try {
-          shippingOptions = await api.getShippingOptions(sellerData.item_id);
+          // Delay antes de obtener opciones de envío
+          const shippingDelay = Math.random() * 8000 + 4000; // 4-12 segundos
+          console.log(
+            `⏳ Esperando ${Math.round(
+              shippingDelay / 1000
+            )} segundos antes de obtener opciones de envío...`
+          );
+          await delay(shippingDelay);
+
+          shippingOptions = await api.getSellerReputation(sellerData.item_id);
         } catch (shippingError) {
           shippingOptions = {
             error: "No se pudieron obtener las opciones de envío",

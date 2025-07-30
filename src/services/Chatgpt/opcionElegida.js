@@ -19,7 +19,8 @@ Formato de respuesta: Devuelve exclusivamente un JSON con "SI" o "NO" en el camp
 Criterios para responder "SI":
 - El mensaje contiene el nombre completo de un producto específico
 - El mensaje incluye características detalladas del producto (marca, modelo, especificaciones)
-- El mensaje menciona productos con descripciones completas como: "Studebaker SB2140B Equipo de sonido portátil con Bluetooth, CD, radio AM/FM y grabadora de casete (Negro)"
+- El mensaje incluye un link de Amazon
+- Aca tenes 3 ejemplos de mensajes que son productos: ("Studebaker SB2140B Equipo de sonido portátil con Bluetooth, CD, radio AM/FM y grabadora de casete (Negro)", "https://www.amazon.com/-/es/Elikliv-EDM202-Microscopio-microscopio-profesional/dp/B09ZY12GPX", "LINK WEB: https://www.inovamusicnet.com/producto/dell-monitor-de-juegos-de-240-hz-de-24-5-pulgadas-full-hd-monitor-con-tecnologia-ips-pantalla-antirreflejante-gris-metalico-oscuro-s2522hg-%f0%9f%a5%87%e2%9c%94%ef%b8%8f-a-pedido/ Hola que tal? Quiero consultar por el Producto:  * Dell S2522HG Monitor Gaming 240Hz 24.5 Pulgadas Full HD con Tecnología IPS, Pantalla Antirreflejo, Gris Oscuro 🥇✔️ ®️ A Pedido 🏆™️ (SKU: b095tvwl6m)")
 
 Criterios para responder "NO":
 - El mensaje es una pregunta general sobre productos
