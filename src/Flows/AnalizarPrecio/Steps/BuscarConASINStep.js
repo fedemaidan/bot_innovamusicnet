@@ -7,6 +7,7 @@ const {
   crearMensajePrecios,
 } = require("../../../Utiles/Mensajes/mensajesMariano");
 const { scrapeMeliPrices } = require("../../../Utiles/webScrapping");
+const BuscarProductoSimilarStep = require("./BuscarProductoSimilarStep");
 
 /**
  {
@@ -55,6 +56,7 @@ module.exports = async function BuscarConASINStep(userId, data) {
     await sock.sendMessage(userId, {
       text: mensajePrecios,
     });
+    FlowManager.resetFlow(userId);
   } else if (
     !resultadoKeepa.success &&
     resultadoKeepa.error === "No disponible en Amazon" &&
@@ -63,14 +65,7 @@ module.exports = async function BuscarConASINStep(userId, data) {
     sock.sendMessage(userId, {
       text: `Producto no encontrado en Amazon, buscando producto alternativo a ${resultadoKeepa.titulo}...`,
     });
-    FlowManager.setFlow(
-      userId,
-      "ANALIZAR_PRECIO",
-      "BuscarProductoSimilarStep",
-      {
-        producto: data.producto,
-      }
-    );
+    await BuscarProductoSimilarStep(userId, { producto: data.producto });
   } else {
     sock.sendMessage(userId, {
       text: "Error al obtener el precio de Amazon" + resultadoKeepa,

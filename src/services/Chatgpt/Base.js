@@ -69,6 +69,7 @@ const marianoOpenai = new OpenAI({
 async function getProductByWebSearch(message) {
   const promptId = "pmpt_687e93c54b1c8190a37883ffe6b4e7ea0ba3cf35d12c4773";
   const version = "11";
+  console.log("messagePromptMariano", message);
   try {
     const response = await marianoOpenai.responses.create({
       prompt: {
@@ -77,7 +78,7 @@ async function getProductByWebSearch(message) {
       },
       input: message,
     });
-    console.log(response.output[1].content);
+    console.log("responsePromptMariano", response);
     return response.output_text;
   } catch (error) {
     console.error("Error al usar prompt con ID:", error);

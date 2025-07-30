@@ -1,6 +1,5 @@
 const FlowManager = require("../../../FlowControl/FlowManager");
 const { getProductByWebSearch } = require("../../../services/Chatgpt/Base");
-const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
 const KeepaConfigService = require("../../../Utiles/KeepaConfigService");
 const {
   extractASINFromAmazonLink,
@@ -9,6 +8,7 @@ const BuscarConASINStep = require("./BuscarConASINStep");
 
 module.exports = async function BuscarProductoSimilarStep(userId, data) {
   console.log("BuscarProductoSimilarStep", data);
+  const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
   const sock = sockSingleton.getSock();
 
   sock.sendMessage(userId, {
@@ -18,6 +18,18 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
   const mensajes = await KeepaConfigService.obtenerMensajesConfiguracion();
 
   const linkAmazon = await getProductByWebSearch(data.producto);
+
+  if (!linkAmazon.startsWith("https")) {
+    await sock.sendMessage(userId, {
+      text: "No se pudo encontrar un producto alternativo",
+    });
+    FlowManager.resetFlow(userId);
+    return;
+  }
+
+  sock.sendMessage(userId, {
+    text: "**link del producto alternativo de web search:** \n" + linkAmazon,
+  });
   console.log("linkAmazon", linkAmazon);
 
   if (linkAmazon.includes("amazon")) {
@@ -25,7 +37,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
     console.log("ASIN extraido:", asin);
 
     if (asin) {
-      BuscarConASINStep(userId, {
+      await BuscarConASINStep(userId, {
         asin,
         producto: data.producto,
         retry: false,
