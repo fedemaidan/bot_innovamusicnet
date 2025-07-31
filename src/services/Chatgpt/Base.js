@@ -1,4 +1,5 @@
-﻿const openai = require("../Chatgpt/openai");
+﻿const KeepaConfigService = require("../../Utiles/KeepaConfigService");
+const openai = require("../Chatgpt/openai");
 const { OpenAI } = require("openai");
 
 function limpiarJson(str) {
@@ -67,8 +68,11 @@ const marianoOpenai = new OpenAI({
 });
 
 async function getProductByWebSearch(message) {
-  const promptId = "pmpt_687e93c54b1c8190a37883ffe6b4e7ea0ba3cf35d12c4773";
-  const version = "11";
+  const keepaConfig = await KeepaConfigService.obtenerConfiguracion();
+  const promptId = keepaConfig.PROMPT_ID;
+  const version = keepaConfig.VERSION?.toString() ?? "11";
+  console.log("promptId", promptId);
+  console.log("version", version);
   console.log("messagePromptMariano", message);
   try {
     const response = await marianoOpenai.responses.create({
@@ -76,7 +80,8 @@ async function getProductByWebSearch(message) {
         id: promptId,
         version: version,
       },
-      input: message,
+      input:
+        "Asegurate de que el producto este disponible en Amazon: " + message,
     });
     console.log("responsePromptMariano", response);
     return response.output_text;

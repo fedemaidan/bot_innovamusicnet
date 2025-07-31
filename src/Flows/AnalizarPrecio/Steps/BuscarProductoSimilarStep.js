@@ -19,10 +19,18 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
 
   const mensajes = await KeepaConfigService.obtenerMensajesConfiguracion();
 
-  linkAmazonNoDisponible = data?.link?.includes("amazon");
+  const linkAmazonNoDisponible = data?.link?.includes("amazon")
+    ? data.link
+    : "";
 
+  sock.sendMessage(userId, {
+    text:
+      "*input del web search: * \n" +
+      data.producto +
+      (linkAmazonNoDisponible ? " " + linkAmazonNoDisponible : ""),
+  });
   const linkAmazon = await getProductByWebSearch(
-    data.producto + linkAmazonNoDisponible
+    data.producto + " " + linkAmazonNoDisponible
   );
 
   console.log("linkAmazon", linkAmazon);
@@ -30,14 +38,6 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
     await sock.sendMessage(userId, {
       text: "No se pudo encontrar un producto alternativo",
     });
-    sock.sendMessage(userId, {
-      text:
-        "*input del web search:* \n" + data.producto + linkAmazonNoDisponible,
-    });
-    sock.sendMessage(userId, {
-      text: "*link del producto alternativo de web search:* \n" + linkAmazon,
-    });
-    console.log("linkAmazon", linkAmazon);
 
     FlowManager.resetFlow(userId);
     return;
@@ -51,7 +51,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
       BuscarConASINStep(userId, {
         asin,
         producto: data.producto,
-        retry: false,
+        retry: data.retry,
         linkWebSearch: linkAmazon,
       });
     } else {

@@ -25,7 +25,7 @@ module.exports = async function BuscarSinASIN(userId, data) {
         asin,
         producto: data.producto,
         linkWebSearch: linkAmazon,
-        retry: false,
+        retry: data.retry - 1,
       });
     } else {
       sock.sendMessage(userId, {

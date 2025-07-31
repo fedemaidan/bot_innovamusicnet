@@ -32,6 +32,7 @@ const defaultFlow = {
             ...result.data,
             asinRegular: asinRegular,
             linkRegular: linkRegular,
+            retry: 3,
           });
           break;
 
