@@ -27,11 +27,16 @@ const defaultFlow = {
       switch (result.accion) {
         case "Info Precio":
           const asinRegular = getAsinFromMessage(message);
-          const linkRegular = getLinkFromMessage(message);
+          const linksRegular = getLinkFromMessage(message);
+          const linkAmazon =
+            linksRegular?.linkAmazon ||
+            `https://www.amazon.com/dp/${asinRegular}`;
+
           AnalizarPrecioFlow.start(userId, {
             ...result.data,
-            asinRegular: asinRegular,
-            linkRegular: linkRegular,
+            asins: [asinRegular],
+            linksAmazon: [linkAmazon],
+            linkInova: linksRegular.linkInova,
             retry: 3,
           });
           break;

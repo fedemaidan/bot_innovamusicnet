@@ -12,6 +12,9 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
   console.log("BuscarProductoSimilarStep", data);
   const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
   const sock = sockSingleton.getSock();
+  const asins = data.asins;
+  const titulos = data.titulos;
+  const linksAmazon = data.linksAmazon;
 
   sock.sendMessage(userId, {
     text: "Buscando producto alternativo ...",
@@ -19,19 +22,13 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
 
   const mensajes = await KeepaConfigService.obtenerMensajesConfiguracion();
 
-  const linkAmazonNoDisponible = data?.link?.includes("amazon")
-    ? data.link
-    : "";
-
   sock.sendMessage(userId, {
     text:
-      "*input del web search: * \n" +
-      data.producto +
-      (linkAmazonNoDisponible ? " " + linkAmazonNoDisponible : ""),
+      "*links y codigos para el web search: * \n" +
+      linksAmazon.join("\n") +
+      titulos.join("\n"),
   });
-  const linkAmazon = await getProductByWebSearch(
-    data.producto + " " + linkAmazonNoDisponible
-  );
+  const linkAmazon = await getProductByWebSearch(titulos, linksAmazon);
 
   console.log("linkAmazon", linkAmazon);
   if (!linkAmazon || (linkAmazon && !linkAmazon.startsWith("https"))) {
@@ -49,10 +46,10 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
 
     if (asin) {
       BuscarConASINStep(userId, {
-        asin,
-        producto: data.producto,
+        asins: [...asins, asin],
+        linksAmazon: [...linksAmazon, linkAmazon],
+        titulos,
         retry: data.retry,
-        linkWebSearch: linkAmazon,
       });
     } else {
       console.log("No se pudo extraer el ASIN de la URL");

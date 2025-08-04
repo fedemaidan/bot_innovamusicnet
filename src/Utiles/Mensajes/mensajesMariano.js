@@ -45,23 +45,66 @@ const getAsinFromMessage = (msg) => {
 
 const getLinkFromMessage = (msg) => {
   try {
-    // Buscar URLs que empiecen con http o https
-    const urlMatch = msg.match(/(https?:\/\/[^\s]+)/i);
+    const links = [];
 
-    if (urlMatch && urlMatch[1]) {
-      return urlMatch[1];
+    // Buscar todas las URLs que empiecen con http o https
+    const urlMatches = msg.match(/(https?:\/\/[^\s]+)/gi);
+
+    if (urlMatches) {
+      urlMatches.forEach((match) => {
+        // Limpiar la URL removiendo caracteres extra al final
+        const cleanUrl = match.replace(/[^\w\-._~:/?#[\]@!$&'()*+,;=%]/g, "");
+        links.push(cleanUrl);
+      });
     }
 
     // Buscar URLs que empiecen con www
-    const wwwMatch = msg.match(/(www\.[^\s]+)/i);
+    const wwwMatches = msg.match(/(www\.[^\s]+)/gi);
 
-    if (wwwMatch && wwwMatch[1]) {
-      return `https://${wwwMatch[1]}`;
+    if (wwwMatches) {
+      wwwMatches.forEach((match) => {
+        const cleanUrl = `https://${match.replace(
+          /[^\w\-._~:/?#[\]@!$&'()*+,;=%]/g,
+          ""
+        )}`;
+        links.push(cleanUrl);
+      });
     }
 
-    return null;
+    // Si no se encontraron links, devolver null
+    if (links.length === 0) {
+      return null;
+    }
+
+    // Clasificar los links encontrados
+    const result = {
+      linkInova: null,
+      linkAmazon: null,
+    };
+
+    links.forEach((link) => {
+      // Verificar si es un link de Amazon
+      if (link.includes("amazon.com") || link.includes("amazon.")) {
+        result.linkAmazon = link;
+      }
+      // Verificar si es un link de inovamusicnet
+      else if (link.includes("inovamusicnet.com")) {
+        result.linkInova = link;
+      }
+      // Si no es ninguno de los anteriores, asignarlo a linkInova como fallback
+      else {
+        result.linkInova = link;
+      }
+    });
+
+    // Si solo hay un link y no es Amazon ni inovamusicnet, devolverlo como string para mantener compatibilidad
+    if (links.length === 1 && !result.linkAmazon && !result.linkInova) {
+      return links[0];
+    }
+
+    return result;
   } catch (error) {
-    console.error("Error extrayendo link del mensaje:", error);
+    console.error("Error extrayendo links del mensaje:", error);
     return null;
   }
 };
@@ -74,32 +117,52 @@ function extraerEmail(mensaje) {
   return match ? match[0] : null;
 }
 
-const crearMensajePrecios = async (resultado) => {
+const crearMensajePrecios = async (asins, resultadoKeepa) => {
   const { titulo, precio_amazon, peso, precios_calculados, categoria } =
-    resultado;
+    resultadoKeepa;
 
   // Obtener el template de mensaje configurado
   const mensajes = await KeepaConfigService.obtenerMensajesConfiguracion();
-  let mensaje = mensajes.MOSTRAR_PRECIO;
+  const tarjeta = precios_calculados.tarjeta;
+  const transferencia = precios_calculados.transferencia;
+  const efectivoUSD = precios_calculados.efectivoUSD;
+  const express = precios_calculados.express;
+  const transferenciaUSD = precios_calculados.transferenciaUSD;
 
   const formatearPrecio = (precio) => {
     return precio.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
-  mensaje = mensaje.replace(
-    /\[tarjeta\]/g,
-    formatearPrecio(precios_calculados.tarjeta)
-  );
-  mensaje = mensaje.replace(
-    /\[transferencia\]/g,
-    formatearPrecio(precios_calculados.transferencia)
-  );
-  mensaje = mensaje.replace(
-    /\[efectivoUSD\]/g,
-    formatearPrecio(precios_calculados.efectivoUSD)
-  );
+  let mensaje1 = "";
+  if (asins.length === 1) {
+    mensaje1 = mensajes.MENSAJE_1_ORIGINAL;
+  } else {
+    mensaje1 = mensajes.MENSAJE_1_ALTERNATIVO;
+  }
 
-  return mensaje;
+  // Generar fecha formatada
+  const fechaHoy = new Date();
+  const dia = fechaHoy.getDate();
+  const mes = fechaHoy.getMonth() + 1;
+  const año = fechaHoy.getFullYear();
+  const fechaFormateada = `${dia}/${mes}/${año}`;
+
+  let mensaje2 = mensajes.MENSAJE_2;
+  mensaje2 = mensaje2.replace(/\[TITULO-PRODUCTO-SELECCIONADO\]/g, titulo);
+  mensaje2 = mensaje2.replace(/\[FECHA-HOY\]/g, fechaFormateada);
+  mensaje2 = mensaje2.replace(
+    /\[transferencia\]/g,
+    formatearPrecio(transferencia)
+  );
+  mensaje2 = mensaje2.replace(
+    /\[transferenciaUSD\]/g,
+    formatearPrecio(transferenciaUSD)
+  );
+  mensaje2 = mensaje2.replace(/\[efectivoUSD\]/g, formatearPrecio(efectivoUSD));
+  mensaje2 = mensaje2.replace(/\[express\]/g, formatearPrecio(express));
+
+  let mensaje3 = mensajes.MENSAJE_3;
+  return [mensaje1, mensaje2, mensaje3];
 };
 
 // Función robusta para extraer ASIN de URLs de Amazon
@@ -127,10 +190,31 @@ function extractASINFromAmazonLink(url) {
   return null;
 }
 
+const getInputWebSearch = (titulos, linkAmazon) => {
+  if (titulos?.length < 2 || linkAmazon?.length < 2) {
+    return linkAmazon[0] + titulos[0];
+  } else {
+    let mensaje = "";
+
+    mensaje += `[${titulos[0]}]\n`;
+    mensaje += `[${linkAmazon[0]}] - El producto alternativo que me entregues No debe ser: `;
+
+    for (let i = 1; i < titulos.length; i++) {
+      mensaje += `[${titulos[i]}] `;
+      mensaje += `[${linkAmazon[i]}] `;
+    }
+
+    mensaje += "porque No Está disponible en AMAZON USA";
+
+    return mensaje;
+  }
+};
+
 module.exports = {
   crearMensajePrecios,
   getAsinFromMessage,
   getLinkFromMessage,
   extraerEmail,
   extractASINFromAmazonLink,
+  getInputWebSearch,
 };

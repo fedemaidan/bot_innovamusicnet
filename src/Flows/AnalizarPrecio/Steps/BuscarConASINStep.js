@@ -8,60 +8,60 @@ const {
 } = require("../../../Utiles/Mensajes/mensajesMariano");
 const { scrapeMeliPrices } = require("../../../Utiles/webScrapping");
 
-/**
- {
-  asin,
-  asinRegular,
-  producto,
-  link,
-  linkRegular,
-  retry?: number 
-  linkWebSearch?: string
-  }
-  */
-
 module.exports = async function BuscarConASINStep(userId, data) {
   const BuscarProductoSimilarStep = require("./BuscarProductoSimilarStep");
-  console.log("BuscarConASINStep", data);
   const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
+  console.log("BuscarConASINStep", data);
   const sock = sockSingleton.getSock();
   const phoneNumber = userId.split("@")[0];
-  const asin = data.asinRegular || data.asin;
-  const link = data.linkRegular || data.link;
+  const asins = data.asins;
+  const lastAsin = asins.at(-1);
+  const linksAmazon = data.linksAmazon;
+  const lastLinkAmazon = linksAmazon.at(-1);
+  const linkInova = data?.linkInova || "";
+  const titulos = data?.titulos || [];
+  const lastTitulo = titulos?.at(-1) || "";
   const retry = data.retry;
 
   sock.sendMessage(userId, {
-    text: `Buscando producto con el codigo ASIN ${asin} ...`,
+    text: `Buscando producto con el codigo ASIN ${lastAsin} ...`,
   });
 
-  const resultadoKeepa = await obtenerPrecioKeepa(asin);
-  const resultadoMeli = await scrapeMeliPrices(asin);
-
+  const resultadoKeepa = await obtenerPrecioKeepa(lastAsin);
   console.log("resultadoKeepa", resultadoKeepa);
-  console.log("resultadoMeli", resultadoMeli);
 
   if (resultadoKeepa && resultadoKeepa.success) {
     sock.sendMessage(userId, {
       text: `Producto encontrado en Amazon: ${resultadoKeepa.titulo}`,
     });
-    const mensajePrecios = await crearMensajePrecios(resultadoKeepa);
+    const mensajePrecios = await crearMensajePrecios(asins, resultadoKeepa);
+    const resultadoMeli = await scrapeMeliPrices(lastAsin);
+    console.log("resultadoMeli", resultadoMeli);
     await addCotizacionToSheet({
-      link: link || "",
-      asin,
+      link: linkInova || "",
+      asin: lastAsin,
       precioKeepa: resultadoKeepa.precios_calculados.efectivoUSD,
       precioMeli: resultadoMeli.price,
       linkMeli: resultadoMeli.link,
-      linkWebSearch: data.linkWebSearch || "",
+      linkWebSearch: lastLinkAmazon || "",
       phoneNumber,
     });
     await sock.sendMessage(userId, {
-      text: `${mensajePrecios} \n\n ${
-        data.linkWebSearch
-          ? "*link del producto alternativo de web search:* \n" +
-            data.linkWebSearch
-          : ""
-      }`,
+      text: `
+      ${lastTitulo} \n ${lastLinkAmazon} \n DISPONIBILIDAD: SI
+      `,
     });
+
+    console.log("mensajePrecios", mensajePrecios);
+
+    for (const mensaje of mensajePrecios) {
+      setTimeout(async () => {
+        await sock.sendMessage(userId, {
+          text: mensaje,
+        });
+      }, 300);
+    }
+
     FlowManager.resetFlow(userId);
   } else if (
     !resultadoKeepa.success &&
@@ -69,13 +69,14 @@ module.exports = async function BuscarConASINStep(userId, data) {
     retry > 0
   ) {
     sock.sendMessage(userId, {
-      text: `Producto no encontrado en Amazon, buscando producto alternativo a ${
-        resultadoKeepa.titulo
-      }.. \n\n *${retry - 1} intentos restantes*`,
+      text: `
+      ${lastTitulo} \n ${lastLinkAmazon} \n DISPONIBILIDAD: NO
+      `,
     });
     await BuscarProductoSimilarStep(userId, {
-      producto: resultadoKeepa.titulo,
-      link: data?.linkWebSearch || data?.link || "",
+      titulos: [...titulos, resultadoKeepa.titulo],
+      asins,
+      linksAmazon,
       retry: retry - 1,
     });
   } else if (

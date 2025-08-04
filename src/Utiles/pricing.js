@@ -25,13 +25,17 @@ async function calcularPrecio({ newPrice, packageWeight, categoryTree }) {
       config.RECARGOTARJETA +
     config.COSTOFIJO * config.DOLAROFICIAL * config.RECARGOTARJETA;
 
+  const transferencia = Math.floor(calculo * config.DESCTRANSFERENCIA);
+
   calculo = Math.floor(calculo);
   return {
     tarjeta: calculo,
-    transferencia: Math.floor(calculo * config.DESCTRANSFERENCIA),
+    transferencia,
+    transferenciaUSD: Math.floor(transferencia * config.DOLARINOVA),
     efectivoUSD: Math.floor(
       (calculo * config.DESCEFECTIVO) / config.DOLARINOVA
     ),
+    express: Math.floor(calculo * 0.1),
   };
 }
 

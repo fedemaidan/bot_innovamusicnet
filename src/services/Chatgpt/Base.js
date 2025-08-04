@@ -1,4 +1,5 @@
 ﻿const KeepaConfigService = require("../../Utiles/KeepaConfigService");
+const { getInputWebSearch } = require("../../Utiles/Mensajes/mensajesMariano");
 const openai = require("../Chatgpt/openai");
 const { OpenAI } = require("openai");
 
@@ -67,21 +68,21 @@ const marianoOpenai = new OpenAI({
   apiKey: process.env.MARIANO_OPENAI_API_KEY,
 });
 
-async function getProductByWebSearch(message) {
+async function getProductByWebSearch(titulos, linksAmazon) {
   const keepaConfig = await KeepaConfigService.obtenerConfiguracion();
   const promptId = keepaConfig.PROMPT_ID;
   const version = keepaConfig.VERSION?.toString() ?? "11";
-  console.log("promptId", promptId);
-  console.log("version", version);
-  console.log("messagePromptMariano", message);
+
+  const input = getInputWebSearch(titulos, linksAmazon);
+
+  console.log("messagePromptMariano", input);
   try {
     const response = await marianoOpenai.responses.create({
       prompt: {
-        id: promptId,
-        version: version,
+        id: "pmpt_687e93c54b1c8190a37883ffe6b4e7ea0ba3cf35d12c4773",
+        version: "11",
       },
-      input:
-        "Asegurate de que el producto este disponible en Amazon: " + message,
+      input,
     });
     console.log("responsePromptMariano", response);
     return response.output_text;

@@ -98,7 +98,6 @@ const KeepaConfigService = {
       this.cache = configuracion;
       this.lastFetchTime = now;
 
-      console.log("✅ Configuración de Keepa cargada desde Google Sheets");
       return configuracion;
     } catch (error) {
       console.error("❌ Error al obtener configuración de Keepa:", error);
