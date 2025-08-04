@@ -3,6 +3,7 @@ const { getProductByWebSearch } = require("../../../services/Chatgpt/Base");
 const KeepaConfigService = require("../../../Utiles/KeepaConfigService");
 const {
   extractASINFromAmazonLink,
+  enviarMensajePrueba,
 } = require("../../../Utiles/Mensajes/mensajesMariano");
 
 module.exports = async function BuscarProductoSimilarStep(userId, data) {
@@ -16,25 +17,24 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
   const titulos = data.titulos;
   const linksAmazon = data.linksAmazon;
 
-  sock.sendMessage(userId, {
-    text: "Buscando producto alternativo ...",
-  });
+  await enviarMensajePrueba(userId, "Buscando producto alternativo ...");
 
   const mensajes = await KeepaConfigService.obtenerMensajesConfiguracion();
 
-  sock.sendMessage(userId, {
-    text:
-      "*links y codigos para el web search: * \n" +
+  await enviarMensajePrueba(
+    userId,
+    "*links y codigos para el web search: * \n" +
       linksAmazon.join("\n") +
-      titulos.join("\n"),
-  });
+      titulos.join("\n")
+  );
   const linkAmazon = await getProductByWebSearch(titulos, linksAmazon);
 
   console.log("linkAmazon", linkAmazon);
   if (!linkAmazon || (linkAmazon && !linkAmazon.startsWith("https"))) {
-    await sock.sendMessage(userId, {
-      text: "No se pudo encontrar un producto alternativo",
-    });
+    await enviarMensajePrueba(
+      userId,
+      "No se pudo encontrar un producto alternativo"
+    );
 
     FlowManager.resetFlow(userId);
     return;

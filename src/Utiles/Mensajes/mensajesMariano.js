@@ -210,7 +210,28 @@ const getInputWebSearch = (titulos, linkAmazon) => {
   }
 };
 
+const enviarMensajePrueba = async (sender, mensaje) => {
+  const sockSingleton = require("../../services/SockSingleton/sockSingleton");
+  const sock = sockSingleton.getSock();
+
+  const phoneNumber = sender.split("@")[0];
+
+  const phoneNumbersTest = [
+    "5493876147003", // Martin
+    "5491150221848", // Mariano
+    "5491162948359", // Fede
+    "5491136744614", //Micky
+  ];
+
+  if (phoneNumbersTest.includes(phoneNumber)) {
+    await sock.sendMessage(phoneNumber, {
+      text: mensaje,
+    });
+  }
+};
+
 module.exports = {
+  enviarMensajePrueba,
   crearMensajePrecios,
   getAsinFromMessage,
   getLinkFromMessage,

@@ -5,6 +5,7 @@ const {
 } = require("../../../Utiles/Google/Sheets/contizaciones");
 const {
   crearMensajePrecios,
+  enviarMensajePrueba,
 } = require("../../../Utiles/Mensajes/mensajesMariano");
 const { scrapeMeliPrices } = require("../../../Utiles/webScrapping");
 
@@ -23,17 +24,19 @@ module.exports = async function BuscarConASINStep(userId, data) {
   const lastTitulo = titulos?.at(-1) || "";
   const retry = data.retry;
 
-  sock.sendMessage(userId, {
-    text: `Buscando producto con el codigo ASIN ${lastAsin} ...`,
-  });
+  await enviarMensajePrueba(
+    userId,
+    `Buscando producto con el codigo ASIN ${lastAsin} ...`
+  );
 
   const resultadoKeepa = await obtenerPrecioKeepa(lastAsin);
   console.log("resultadoKeepa", resultadoKeepa);
 
   if (resultadoKeepa && resultadoKeepa.success) {
-    sock.sendMessage(userId, {
-      text: `Producto encontrado en Amazon: ${resultadoKeepa.titulo}`,
-    });
+    await enviarMensajePrueba(
+      userId,
+      `Producto encontrado en Amazon: ${resultadoKeepa.titulo}`
+    );
     const mensajePrecios = await crearMensajePrecios(asins, resultadoKeepa);
     const resultadoMeli = await scrapeMeliPrices(lastAsin);
     console.log("resultadoMeli", resultadoMeli);
@@ -46,11 +49,12 @@ module.exports = async function BuscarConASINStep(userId, data) {
       linkWebSearch: lastLinkAmazon || "",
       phoneNumber,
     });
-    await sock.sendMessage(userId, {
-      text: `
-      ${lastTitulo} \n ${lastLinkAmazon} \n DISPONIBILIDAD: SI
-      `,
-    });
+    await enviarMensajePrueba(
+      userId,
+      `${
+        lastTitulo ? lastTitulo + "\n" : ""
+      } ${lastLinkAmazon} \n DISPONIBILIDAD: SI`
+    );
 
     console.log("mensajePrecios", mensajePrecios);
 
@@ -68,11 +72,12 @@ module.exports = async function BuscarConASINStep(userId, data) {
     resultadoKeepa.error === "No disponible en Amazon" &&
     retry > 0
   ) {
-    sock.sendMessage(userId, {
-      text: `
-      ${lastTitulo} \n ${lastLinkAmazon} \n DISPONIBILIDAD: NO
-      `,
-    });
+    await enviarMensajePrueba(
+      userId,
+      `${
+        lastTitulo ? lastTitulo + "\n" : ""
+      } ${lastLinkAmazon} \n DISPONIBILIDAD: NO`
+    );
     await BuscarProductoSimilarStep(userId, {
       titulos: [...titulos, resultadoKeepa.titulo],
       asins,

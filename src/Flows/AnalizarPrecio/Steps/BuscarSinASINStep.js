@@ -3,6 +3,7 @@ const { getProductByWebSearch } = require("../../../services/Chatgpt/Base");
 const sockSingleton = require("../../../services/SockSingleton/sockSingleton");
 const {
   extractASINFromAmazonLink,
+  enviarMensajePrueba,
 } = require("../../../Utiles/Mensajes/mensajesMariano");
 const BuscarConASINStep = require("./BuscarConASINStep");
 
@@ -10,9 +11,7 @@ module.exports = async function BuscarSinASIN(userId, data) {
   console.log("BuscarSinASINStep", data);
   const sock = sockSingleton.getSock();
 
-  sock.sendMessage(userId, {
-    text: "Buscando producto sin ASIN ...",
-  });
+  await enviarMensajePrueba(userId, "Buscando producto sin ASIN ...");
 
   const linkAmazon = await getProductByWebSearch(data.producto);
 
@@ -28,9 +27,10 @@ module.exports = async function BuscarSinASIN(userId, data) {
         retry: data.retry - 1,
       });
     } else {
-      sock.sendMessage(userId, {
-        text: "No se pudo extraer el ASIN del link de Amazon",
-      });
+      await enviarMensajePrueba(
+        userId,
+        "No se pudo extraer el ASIN del link de Amazon"
+      );
       FlowManager.resetFlow(userId);
     }
   }
