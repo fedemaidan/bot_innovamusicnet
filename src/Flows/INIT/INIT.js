@@ -22,6 +22,7 @@ const defaultFlow = {
         result = message;
       }
 
+      console.log("result", result);
       //Aqui van todas las ACCIONES que se encuentran en analizar intencion. El json y este switch deben hacer MATCH
       //Se encarga de Enrutar  los datos al flujo que el usuario se esta dirijiendo.
       switch (result.accion) {
@@ -36,7 +37,7 @@ const defaultFlow = {
             ...result.data,
             asins: [asinRegular],
             linksAmazon: [linkAmazon],
-            linkInova: linksRegular.linkInova,
+            linkInova: linksRegular?.linkInova,
             retry: 3,
           });
           break;

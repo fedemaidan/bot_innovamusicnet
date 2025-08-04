@@ -224,7 +224,7 @@ const enviarMensajePrueba = async (sender, mensaje) => {
   ];
 
   if (phoneNumbersTest.includes(phoneNumber)) {
-    await sock.sendMessage(phoneNumber, {
+    await sock.sendMessage(sender, {
       text: mensaje,
     });
   }
