@@ -1,4 +1,5 @@
 const { analizarIntencion } = require("../../Utiles/Chatgpt/AnalizarIntencion");
+const KeepaConfigService = require("../../Utiles/KeepaConfigService");
 const {
   getAsinFromMessage,
   getLinkFromMessage,
@@ -43,7 +44,15 @@ const defaultFlow = {
           break;
 
         case "No comprendido":
-          console.log("NO COMPRENDIDO");
+          const sockSingleton = require("../../services/SockSingleton/sockSingleton");
+          const sock = sockSingleton.getSock();
+          const mensajes =
+            await KeepaConfigService.obtenerMensajesConfiguracion();
+          const mensaje = mensajes.MENSAJE_SIN_COTIZAR;
+          await sock.sendMessage(userId, {
+            text: mensaje,
+            linkPreview: false,
+          });
           break;
 
         case "NoRegistrado":

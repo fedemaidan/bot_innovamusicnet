@@ -5,10 +5,7 @@ const {
   addCotizacionToSheet,
   addEmailToSheet,
 } = require("../../Utiles/Google/Sheets/contizaciones");
-const {
-  extraerEmail,
-  crearMensajePrecios,
-} = require("../../Utiles/Mensajes/mensajesMariano");
+const { extraerEmail } = require("../../Utiles/Mensajes/mensajesMariano");
 const FlowMapper = require("../../FlowControl/FlowMapper");
 
 const messageResponder = async (messageType, msg, sock, sender) => {
@@ -22,6 +19,11 @@ const messageResponder = async (messageType, msg, sock, sender) => {
       const email = extraerEmail(text);
       if (email) {
         await addEmailToSheet(email, phoneNumber);
+      }
+
+      const isBlocked = await KeepaConfigService.isNumberBlocked(phoneNumber);
+      if (isBlocked) {
+        return;
       }
 
       await FlowMapper.handleMessage(sender, text, messageType);

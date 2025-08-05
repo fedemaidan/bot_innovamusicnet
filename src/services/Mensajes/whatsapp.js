@@ -32,7 +32,8 @@ const connectToWhatsApp = async () => {
   // Se crea el socket de WhatsApp
   const sock = makeWASocket({
     auth: state,
-    printQRInTerminal: true, // Muestra el QR en la terminal para la autenticación
+    printQRInTerminal: true,
+    generateHighQualityLinkPreview: false,
   });
 
   // Maneja eventos de actualización de la conexión

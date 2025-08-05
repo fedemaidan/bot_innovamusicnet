@@ -14,6 +14,9 @@ const KeepaConfigService = {
   CACHE_DURATION_MS: 1000,
   SHEET_NAME: "KeepaConfig",
   SHEET_NAME_MESSAGES: "Mensajes",
+  blockedNumbers: {
+    // 'number': 'timestamp'
+  },
 
   async obtenerMensajesConfiguracion() {
     const now = Date.now();
@@ -81,7 +84,7 @@ const KeepaConfigService = {
       const rows = await getRowsValues(
         GOOGLE_SHEET_ID,
         this.SHEET_NAME,
-        "A2:B100"
+        "A2:B20"
       );
 
       const configuracion = {};
@@ -106,64 +109,6 @@ const KeepaConfigService = {
         console.log("⚠️ Usando configuración en caché como fallback");
         return this.cache;
       }
-
-      // Si no hay caché, devolver configuración por defecto
-      console.log("⚠️ Usando configuración por defecto");
-      return this.getConfiguracionPorDefecto();
-    }
-  },
-
-  getConfiguracionPorDefecto() {
-    return {
-      DOLARINOVA: 1100,
-      DOLAROFICIAL: 1150,
-      DOLAROPERATIVO: 1250,
-      COSTOFIJO: 10,
-      FLETEXKG: 25,
-      RATIOP: 1.71,
-      RATIOC: 1.6,
-      RATION: 1.7,
-      RECARGOTARJETA: 1.1,
-      DESCEFECTIVO: 0.85,
-      DESCTRANSFERENCIA: 0.90909,
-    };
-  },
-
-  async actualizarConfiguracion(nuevasConfiguraciones) {
-    try {
-      const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
-      if (!GOOGLE_SHEET_ID) {
-        throw new Error(
-          "GOOGLE_SHEET_ID no está configurado en las variables de entorno"
-        );
-      }
-
-      // Obtener configuración actual
-      const configActual = await this.obtenerConfiguracion();
-
-      // Actualizar cada configuración
-      for (const [key, value] of Object.entries(nuevasConfiguraciones)) {
-        if (configActual.hasOwnProperty(key)) {
-          // Buscar la fila por la key y actualizarla
-          await updateRow(
-            GOOGLE_SHEET_ID,
-            [key, value],
-            `${this.SHEET_NAME}!A1:B100`,
-            0, // posIdColumn (columna A)
-            key // idValue
-          );
-        }
-      }
-
-      // Invalidar caché para forzar recarga
-      this.cache = null;
-      this.lastFetchTime = null;
-
-      console.log("✅ Configuración de Keepa actualizada en Google Sheets");
-      return true;
-    } catch (error) {
-      console.error("❌ Error al actualizar configuración de Keepa:", error);
-      throw error;
     }
   },
 
@@ -178,27 +123,38 @@ const KeepaConfigService = {
     console.log("✅ Caché de configuración de Keepa limpiado");
   },
 
-  // Método para obtener información del caché
-  obtenerInfoCache() {
-    if (!this.cache) {
-      return {
-        tieneCache: false,
-        tiempoRestante: 0,
-      };
+  async isNumberBlocked(phoneNumber) {
+    const HORAS_BLOQUEO = await this.obtenerValor("HORAS_BLOQUEO");
+
+    const phoneNumbersTest = [
+      "5493876147003", // Martin
+      "5491150221848", // Mariano
+      "5491162948359", // Fede
+      "5491136744614", //Micky
+    ];
+
+    if (phoneNumbersTest.includes(phoneNumber)) {
+      return false;
     }
 
-    const tiempoTranscurrido = Date.now() - this.lastFetchTime;
-    const tiempoRestante = Math.max(
-      0,
-      this.CACHE_DURATION_MS - tiempoTranscurrido
-    );
+    if (phoneNumber) {
+      const lastBlocked = this.blockedNumbers[phoneNumber];
+      if (lastBlocked) {
+        const now = Date.now();
+        const timeDiff = now - lastBlocked;
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
+        if (hoursDiff < HORAS_BLOQUEO) {
+          return true;
+        }
+      } else {
+        this.blockNumber(phoneNumber);
+        return false;
+      }
+    }
+  },
 
-    return {
-      tieneCache: true,
-      tiempoTranscurrido,
-      tiempoRestante,
-      expiraEn: new Date(this.lastFetchTime + this.CACHE_DURATION_MS),
-    };
+  blockNumber(phoneNumber) {
+    this.blockedNumbers[phoneNumber] = Date.now();
   },
 };
 

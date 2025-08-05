@@ -57,16 +57,18 @@ module.exports = async function BuscarConASINStep(userId, data) {
       } ${lastLinkAmazon} \n DISPONIBILIDAD: SI`
     );
 
-    for (const mensaje of mensajePrecios) {
-      setTimeout(async () => {
-        try {
-          await sock.sendMessage(userId, {
-            text: mensaje,
-          });
-        } catch (error) {
-          console.error("Error al enviar mensaje:", error);
-        }
-      }, 1000);
+    for (let i = 0; i < mensajePrecios.length; i++) {
+      const mensaje = mensajePrecios[i];
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      try {
+        await sock.sendMessage(userId, {
+          text: mensaje,
+          linkPreview: false,
+        });
+      } catch (error) {
+        console.error("Error al enviar mensaje:", error);
+      }
     }
 
     FlowManager.resetFlow(userId);
