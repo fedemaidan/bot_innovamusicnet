@@ -148,7 +148,21 @@ const crearMensajePrecios = async (asins, resultadoKeepa) => {
   const fechaFormateada = `${dia}/${mes}/${año}`;
 
   let mensaje2 = mensajes.MENSAJE_2;
-  mensaje2 = mensaje2.replace(/\[TITULO-PRODUCTO-SELECCIONADO\]/g, titulo);
+
+  // Limpiar el título de caracteres problemáticos y truncar si es muy largo
+  const tituloLimpio = titulo
+    .replace(/[^\w\s\-.,&()]/g, "") // Remover caracteres especiales excepto algunos básicos
+    .replace(/\s+/g, " ") // Normalizar espacios
+    .trim();
+
+  // Verificar si el template contiene el placeholder
+  const tienePlaceholder = mensaje2.includes("[TITULO-PRODUCTO-SELECCIONADO]");
+
+  mensaje2 = mensaje2.replace(
+    /\[TITULO-PRODUCTO-SELECCIONADO\]/g,
+    tituloLimpio
+  );
+
   mensaje2 = mensaje2.replace(/\[FECHA-HOY\]/g, fechaFormateada);
   mensaje2 = mensaje2.replace(
     /\[transferencia\]/g,
@@ -162,6 +176,7 @@ const crearMensajePrecios = async (asins, resultadoKeepa) => {
   mensaje2 = mensaje2.replace(/\[express\]/g, formatearPrecio(express));
 
   let mensaje3 = mensajes.MENSAJE_3;
+
   return [mensaje1, mensaje2, mensaje3];
 };
 

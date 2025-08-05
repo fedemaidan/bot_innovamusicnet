@@ -37,6 +37,7 @@ module.exports = async function BuscarConASINStep(userId, data) {
       userId,
       `Producto encontrado en Amazon: ${resultadoKeepa.titulo}`
     );
+
     const mensajePrecios = await crearMensajePrecios(asins, resultadoKeepa);
     const resultadoMeli = await scrapeMeliPrices(lastAsin);
     console.log("resultadoMeli", resultadoMeli);
@@ -56,14 +57,16 @@ module.exports = async function BuscarConASINStep(userId, data) {
       } ${lastLinkAmazon} \n DISPONIBILIDAD: SI`
     );
 
-    console.log("mensajePrecios", mensajePrecios);
-
     for (const mensaje of mensajePrecios) {
       setTimeout(async () => {
-        await sock.sendMessage(userId, {
-          text: mensaje,
-        });
-      }, 300);
+        try {
+          await sock.sendMessage(userId, {
+            text: mensaje,
+          });
+        } catch (error) {
+          console.error("Error al enviar mensaje:", error);
+        }
+      }, 1000);
     }
 
     FlowManager.resetFlow(userId);
