@@ -3,9 +3,11 @@ const { obtenerPrecioKeepa } = require("../../../routes/keepaRoutes");
 const {
   addCotizacionToSheet,
 } = require("../../../Utiles/Google/Sheets/contizaciones");
+const KeepaConfigService = require("../../../Utiles/KeepaConfigService");
 const {
   crearMensajePrecios,
   enviarMensajePrueba,
+  manejarDelayInteligente,
 } = require("../../../Utiles/Mensajes/mensajesMariano");
 const { scrapeMeliPrices } = require("../../../Utiles/webScrapping");
 
@@ -57,10 +59,10 @@ module.exports = async function BuscarConASINStep(userId, data) {
       } ${lastLinkAmazon} \n DISPONIBILIDAD: SI`
     );
 
-    for (let i = 0; i < mensajePrecios.length; i++) {
-      const mensaje = mensajePrecios[i];
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+    await manejarDelayInteligente(userId, data.inicio);
 
+    for (const mensaje of mensajePrecios) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       try {
         await sock.sendMessage(userId, {
           text: mensaje,
@@ -70,7 +72,6 @@ module.exports = async function BuscarConASINStep(userId, data) {
         console.error("Error al enviar mensaje:", error);
       }
     }
-
     FlowManager.resetFlow(userId);
   } else if (
     !resultadoKeepa.success &&
@@ -88,6 +89,7 @@ module.exports = async function BuscarConASINStep(userId, data) {
       asins,
       linksAmazon,
       retry: retry - 1,
+      inicio: data.inicio,
     });
   } else if (
     retry <= 0 &&

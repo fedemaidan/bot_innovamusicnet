@@ -25,6 +25,7 @@ module.exports = async function BuscarSinASIN(userId, data) {
         producto: data.producto,
         linkWebSearch: linkAmazon,
         retry: data.retry - 1,
+        inicio: data.inicio,
       });
     } else {
       await enviarMensajePrueba(

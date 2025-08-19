@@ -10,10 +10,13 @@ const {
 const KeepaConfigService = {
   cache: null,
   cacheMessages: null,
+  cacheTestNumbers: null,
   lastFetchTime: null,
+  lastFetchTimeTestNumbers: null,
   CACHE_DURATION_MS: 1000,
   SHEET_NAME: "KeepaConfig",
   SHEET_NAME_MESSAGES: "Mensajes",
+  testNumbers: [],
   blockedNumbers: {
     // 'number': 'timestamp'
   },
@@ -93,7 +96,22 @@ const KeepaConfigService = {
       for (const row of rows) {
         if (row.length >= 2 && row[0] && row[1]) {
           const key = row[0].trim();
-          const value = parseFloat(row[1]) || row[1]; // Intentar convertir a número
+          const rawValue = row[1];
+
+          // Función para parsear valores numéricos de manera más robusta
+          let value = rawValue;
+          if (typeof rawValue === "string" && rawValue.trim() !== "") {
+            const cleanValue = rawValue.replace(/,/g, ".").trim(); // Reemplazar comas por puntos
+            const numValue = parseFloat(cleanValue);
+
+            // Solo usar el valor numérico si la conversión fue exitosa y no es NaN
+            if (!isNaN(numValue) && isFinite(numValue)) {
+              value = numValue;
+            }
+          } else if (typeof rawValue === "number") {
+            value = rawValue;
+          }
+
           configuracion[key] = value;
         }
       }
@@ -117,23 +135,78 @@ const KeepaConfigService = {
     return configuracion[key];
   },
 
+  async obtenerValorNumerico(key) {
+    const valor = await this.obtenerValor(key);
+
+    if (typeof valor === "number") {
+      return valor;
+    }
+
+    if (typeof valor === "string" && valor.trim() !== "") {
+      const cleanValue = valor.replace(/,/g, ".").trim();
+      const numValue = parseFloat(cleanValue);
+
+      if (!isNaN(numValue) && isFinite(numValue)) {
+        return numValue;
+      }
+    }
+
+    return null;
+  },
+
   limpiarCache() {
     this.cache = null;
+    this.cacheMessages = null;
+    this.cacheTestNumbers = null;
     this.lastFetchTime = null;
+    this.lastFetchTimeTestNumbers = null;
     console.log("✅ Caché de configuración de Keepa limpiado");
+  },
+
+  async getTestNumbers() {
+    const now = Date.now();
+
+    if (
+      this.cacheTestNumbers &&
+      this.lastFetchTimeTestNumbers &&
+      now - this.lastFetchTimeTestNumbers < this.CACHE_DURATION_MS
+    ) {
+      return this.cacheTestNumbers;
+    }
+
+    try {
+      const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
+      if (!GOOGLE_SHEET_ID) {
+        throw new Error(
+          "GOOGLE_SHEET_ID no está configurado en las variables de entorno"
+        );
+      }
+
+      const rows = await getRowsValues(
+        GOOGLE_SHEET_ID,
+        this.SHEET_NAME,
+        "D2:D8"
+      );
+      const testNumbers = rows
+        .map((row) => row[0])
+        .filter((number) => number && number.trim() !== "");
+
+      // Actualizar cache
+      this.cacheTestNumbers = testNumbers;
+      this.testNumbers = testNumbers;
+      this.lastFetchTimeTestNumbers = now;
+
+      return testNumbers;
+    } catch (error) {
+      console.error("❌ Error al obtener números de prueba:", error);
+    }
   },
 
   async isNumberBlocked(phoneNumber) {
     const HORAS_BLOQUEO = await this.obtenerValor("HORAS_BLOQUEO");
+    const testNumbers = await this.getTestNumbers();
 
-    const phoneNumbersTest = [
-      "5493876147003", // Martin
-      "5491150221848", // Mariano
-      "5491162948359", // Fede
-      "5491136744614", //Micky
-    ];
-
-    if (phoneNumbersTest.includes(phoneNumber)) {
+    if (testNumbers.includes(phoneNumber)) {
       return false;
     }
 

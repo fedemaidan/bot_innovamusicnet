@@ -43,6 +43,33 @@ const getAsinFromMessage = (msg) => {
   }
 };
 
+const getTituloFromMessage = (msg) => {
+  try {
+    // Buscar el patrón entre "Producto:" y "A Pedido" (insensible a mayúsculas)
+    const productoMatch = msg.match(/Producto:\s*(.*?)\s*A\s+Pedido/is);
+
+    if (productoMatch && productoMatch[1]) {
+      // Limpiar el texto extraído
+      let nombreProducto = productoMatch[1].trim();
+
+      // Remover caracteres especiales como asteriscos, símbolos extra, etc.
+      nombreProducto = nombreProducto
+        .replace(/\*+/g, "") // Remover asteriscos
+        .replace(/®/g, "") // Remover símbolo de marca registrada
+        .replace(/™/g, "") // Remover símbolo de marca comercial
+        .replace(/\s+/g, " ") // Normalizar espacios múltiples
+        .trim();
+
+      return nombreProducto;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error extrayendo título del mensaje:", error);
+    return null;
+  }
+};
+
 const getLinkFromMessage = (msg) => {
   try {
     const links = [];
@@ -117,6 +144,37 @@ function extraerEmail(mensaje) {
   return match ? match[0] : null;
 }
 
+async function manejarDelayInteligente(userId, tiempoInicio) {
+  const delaySegundos = await KeepaConfigService.obtenerValorNumerico(
+    "SEGUNDOS_DELAY_RESPUESTA_INICIAL"
+  );
+
+  const tiempoTranscurridoSegundos = Math.floor(
+    (Date.now() - tiempoInicio) / 1000
+  );
+  const tiempoRestanteSegundos = Math.max(
+    0,
+    delaySegundos - tiempoTranscurridoSegundos
+  );
+
+  if (tiempoRestanteSegundos > 0) {
+    await enviarMensajePrueba(
+      userId,
+      `Esperando ${tiempoRestanteSegundos} segundos más para enviar el mensaje...`
+    );
+    await new Promise((resolve) =>
+      setTimeout(resolve, tiempoRestanteSegundos * 1000)
+    );
+  } else {
+    await enviarMensajePrueba(
+      userId,
+      `Tiempo de delay ya transcurrido (${tiempoTranscurridoSegundos}s), enviando mensaje inmediatamente...`
+    );
+  }
+
+  return delaySegundos;
+}
+
 const crearMensajePrecios = async (asins, resultadoKeepa) => {
   const { titulo, precio_amazon, peso, precios_calculados, categoria } =
     resultadoKeepa;
@@ -174,6 +232,7 @@ const crearMensajePrecios = async (asins, resultadoKeepa) => {
   );
   mensaje2 = mensaje2.replace(/\[efectivoUSD\]/g, formatearPrecio(efectivoUSD));
   mensaje2 = mensaje2.replace(/\[express\]/g, formatearPrecio(express));
+  mensaje2 = mensaje2.replace(/\[tarjeta\]/g, formatearPrecio(tarjeta));
 
   let mensaje3 = mensajes.MENSAJE_3;
 
@@ -227,21 +286,22 @@ const getInputWebSearch = (titulos, linkAmazon) => {
 
 const enviarMensajePrueba = async (sender, mensaje) => {
   const sockSingleton = require("../../services/SockSingleton/sockSingleton");
+  const KeepaConfigService = require("../KeepaConfigService");
   const sock = sockSingleton.getSock();
 
   const phoneNumber = sender.split("@")[0];
 
-  const phoneNumbersTest = [
-    "5493876147003", // Martin
-    "5491150221848", // Mariano
-    "5491162948359", // Fede
-    "5491136744614", //Micky
-  ];
+  try {
+    const phoneNumbersTest = await KeepaConfigService.getTestNumbers();
 
-  if (phoneNumbersTest.includes(phoneNumber)) {
-    await sock.sendMessage(sender, {
-      text: mensaje,
-    });
+    console.log("phoneNumbersTest", phoneNumbersTest);
+    if (phoneNumbersTest.includes(phoneNumber)) {
+      await sock.sendMessage(sender, {
+        text: mensaje,
+      });
+    }
+  } catch (error) {
+    console.error("Error al verificar números de prueba:", error);
   }
 };
 
@@ -249,8 +309,10 @@ module.exports = {
   enviarMensajePrueba,
   crearMensajePrecios,
   getAsinFromMessage,
+  getTituloFromMessage,
   getLinkFromMessage,
   extraerEmail,
   extractASINFromAmazonLink,
   getInputWebSearch,
+  manejarDelayInteligente,
 };

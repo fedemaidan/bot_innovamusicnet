@@ -3,6 +3,8 @@ const KeepaConfigService = require("../../Utiles/KeepaConfigService");
 const {
   getAsinFromMessage,
   getLinkFromMessage,
+  getTituloFromMessage,
+  enviarMensajePrueba,
 } = require("../../Utiles/Mensajes/mensajesMariano");
 const AnalizarPrecioFlow = require("../AnalizarPrecio/AnalizarPrecioFlow");
 
@@ -30,6 +32,7 @@ const defaultFlow = {
         case "Info Precio":
           const asinRegular = getAsinFromMessage(message);
           const linksRegular = getLinkFromMessage(message);
+          const titulo = getTituloFromMessage(message);
           const linkAmazon =
             linksRegular?.linkAmazon ||
             `https://www.amazon.com/dp/${asinRegular}`;
@@ -39,7 +42,9 @@ const defaultFlow = {
             asins: [asinRegular],
             linksAmazon: [linkAmazon],
             linkInova: linksRegular?.linkInova,
+            titulos: [titulo],
             retry: 3,
+            inicio: Date.now(),
           });
           break;
 
@@ -49,10 +54,22 @@ const defaultFlow = {
           const mensajes =
             await KeepaConfigService.obtenerMensajesConfiguracion();
           const mensaje = mensajes.MENSAJE_SIN_COTIZAR;
-          await sock.sendMessage(userId, {
-            text: mensaje,
-            linkPreview: false,
-          });
+          // Obtener el delay como número con fallback a 5 segundos
+          const delay = await KeepaConfigService.obtenerValorNumerico(
+            "SEGUNDOS_DELAY_RESPUESTA_INICIAL"
+          );
+
+          await enviarMensajePrueba(
+            userId,
+            `Esperando ${delay} segundos para responder ...`
+          );
+
+          setTimeout(async () => {
+            await sock.sendMessage(userId, {
+              text: mensaje,
+              linkPreview: false,
+            });
+          }, delay * 1000);
           break;
 
         case "NoRegistrado":

@@ -24,8 +24,9 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
   await enviarMensajePrueba(
     userId,
     "*links y codigos para el web search: * \n" +
-      linksAmazon.join("\n") +
-      titulos.join("\n")
+      linksAmazon.join(" \n") +
+      "\n" +
+      titulos.join(" \n")
   );
   const linkAmazon = await getProductByWebSearch(titulos, linksAmazon);
 
@@ -50,6 +51,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
         linksAmazon: [...linksAmazon, linkAmazon],
         titulos,
         retry: data.retry,
+        inicio: data.inicio,
       });
     } else {
       console.log("No se pudo extraer el ASIN de la URL");
