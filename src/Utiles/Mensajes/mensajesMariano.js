@@ -264,7 +264,7 @@ function extractASINFromAmazonLink(url) {
   return null;
 }
 
-const getInputWebSearch = (titulos, linkAmazon) => {
+const getInputWebSearch = (titulos, linkAmazon, features) => {
   if (titulos?.length < 2 || linkAmazon?.length < 2) {
     return linkAmazon[0] + titulos[0];
   } else {
@@ -272,10 +272,11 @@ const getInputWebSearch = (titulos, linkAmazon) => {
 
     mensaje += `[${titulos[0]}]\n`;
     mensaje += `[${linkAmazon[0]}] - El producto alternativo que me entregues No debe ser: `;
-
+    mensaje += `[${features[0]}]`;
     for (let i = 1; i < titulos.length; i++) {
       mensaje += `[${titulos[i]}] `;
       mensaje += `[${linkAmazon[i]}] `;
+      mensaje += `[${features[i]}] `;
     }
 
     mensaje += "porque No Está disponible en AMAZON USA";

@@ -44,6 +44,7 @@ const defaultFlow = {
             linkInova: linksRegular?.linkInova,
             titulos: [titulo],
             retry: 3,
+            features: [],
             inicio: Date.now(),
           });
           break;

@@ -68,12 +68,12 @@ const marianoOpenai = new OpenAI({
   apiKey: process.env.MARIANO_OPENAI_API_KEY,
 });
 
-async function getProductByWebSearch(titulos, linksAmazon) {
+async function getProductByWebSearch(titulos, linksAmazon, features) {
   const keepaConfig = await KeepaConfigService.obtenerConfiguracion();
   const promptId = keepaConfig.PROMPT_ID;
   const version = keepaConfig.VERSION?.toString() ?? "11";
 
-  const input = getInputWebSearch(titulos, linksAmazon);
+  const input = getInputWebSearch(titulos, linksAmazon, features);
 
   console.log("messagePromptMariano", input);
   try {

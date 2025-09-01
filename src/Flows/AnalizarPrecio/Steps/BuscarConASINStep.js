@@ -23,6 +23,7 @@ module.exports = async function BuscarConASINStep(userId, data) {
   const lastLinkAmazon = linksAmazon?.at(-1);
   const linkInova = data?.linkInova || "";
   const titulos = data?.titulos || [];
+  const features = data?.features || [];
   const lastTitulo = titulos?.at(-1) || "";
   const retry = data.retry;
 
@@ -86,6 +87,7 @@ module.exports = async function BuscarConASINStep(userId, data) {
     );
     await BuscarProductoSimilarStep(userId, {
       titulos: [...titulos, resultadoKeepa.titulo],
+      features: [...features, resultadoKeepa.features],
       asins,
       linksAmazon,
       retry: retry - 1,

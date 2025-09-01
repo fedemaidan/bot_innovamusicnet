@@ -15,6 +15,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
   const sock = sockSingleton.getSock();
   const asins = data.asins;
   const titulos = data.titulos;
+  const features = data.features;
   const linksAmazon = data.linksAmazon;
 
   await enviarMensajePrueba(userId, "Buscando producto alternativo ...");
@@ -24,11 +25,17 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
   await enviarMensajePrueba(
     userId,
     "*links y codigos para el web search: * \n" +
-      linksAmazon.join(" \n") +
+      linksAmazon.join(" ||| \n") +
       "\n" +
-      titulos.join(" \n")
+      titulos.join(" ||| \n") +
+      "\n" +
+      features.join(" ||| \n")
   );
-  const linkAmazon = await getProductByWebSearch(titulos, linksAmazon);
+  const linkAmazon = await getProductByWebSearch(
+    titulos,
+    linksAmazon,
+    features
+  );
 
   console.log("linkAmazon", linkAmazon);
   if (!linkAmazon || (linkAmazon && !linkAmazon.startsWith("https"))) {
@@ -49,6 +56,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
       BuscarConASINStep(userId, {
         asins: [...asins, asin],
         linksAmazon: [...linksAmazon, linkAmazon],
+        features,
         titulos,
         retry: data.retry,
         inicio: data.inicio,

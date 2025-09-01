@@ -9,7 +9,6 @@ const BuscarConASINStep = require("./BuscarConASINStep");
 
 module.exports = async function BuscarSinASIN(userId, data) {
   console.log("BuscarSinASINStep", data);
-  const sock = sockSingleton.getSock();
 
   await enviarMensajePrueba(userId, "Buscando producto sin ASIN ...");
 
@@ -26,6 +25,7 @@ module.exports = async function BuscarSinASIN(userId, data) {
         linkWebSearch: linkAmazon,
         retry: data.retry - 1,
         inicio: data.inicio,
+        features: [...data.features] || [],
       });
     } else {
       await enviarMensajePrueba(

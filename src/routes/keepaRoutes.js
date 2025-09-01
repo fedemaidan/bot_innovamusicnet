@@ -1,5 +1,8 @@
 const express = require("express");
-const calcularPrecio = require("../Utiles/pricing");
+const {
+  calcularPrecio,
+  calcularPrecioNuevoMetodo,
+} = require("../Utiles/pricing");
 const axios = require("axios");
 const { asin_list } = require("../Utiles/helpersScrapping");
 const { getProductKeepa } = require("../Utiles/keepa");
@@ -12,6 +15,7 @@ async function obtenerPrecioKeepa(asin) {
   try {
     const { data } = await axios.get(url);
     const product = data.products[0];
+    console.log("features", product.features);
     console.log("productKeepa", product);
 
     if (!product) {
@@ -49,10 +53,11 @@ async function obtenerPrecioKeepa(asin) {
         error: "No disponible en Amazon",
         titulo: product.title,
         asin: asinClean,
+        features: product.features.slice(0, 10),
       };
     }
 
-    const precios = await calcularPrecio({
+    const precios = await calcularPrecioNuevoMetodo({
       newPrice,
       packageWeight,
       categoryTree: product.categoryTree || [],
@@ -66,6 +71,7 @@ async function obtenerPrecioKeepa(asin) {
       precios_calculados: precios,
       titulo: product.title,
       categoria: product.categoryTree,
+      features: product.features.slice(0, 10),
     };
   } catch (error) {
     return {
