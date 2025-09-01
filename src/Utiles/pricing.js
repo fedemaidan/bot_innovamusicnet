@@ -164,7 +164,7 @@ async function calcularPrecioNuevoMetodo({
   return {
     tarjeta: calculo,
     transferencia,
-    transferenciaUSD: Math.floor(transferencia * config.DOLARINOVA),
+    transferenciaUSD: Math.floor(transferencia / config.DOLARINOVA),
     efectivoUSD: Math.floor(
       (calculo * config.DESCEFECTIVO) / config.DOLARINOVA
     ),
