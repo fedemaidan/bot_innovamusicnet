@@ -53,7 +53,7 @@ async function obtenerPrecioKeepa(asin) {
         error: "No disponible en Amazon",
         titulo: product.title,
         asin: asinClean,
-        features: product.features.slice(0, 10),
+        features: product.features ? product.features.slice(0, 10) : [],
       };
     }
 
@@ -71,7 +71,7 @@ async function obtenerPrecioKeepa(asin) {
       precios_calculados: precios,
       titulo: product.title,
       categoria: product.categoryTree,
-      features: product.features.slice(0, 10),
+      features: product.features ? product.features.slice(0, 10) : [],
     };
   } catch (error) {
     return {

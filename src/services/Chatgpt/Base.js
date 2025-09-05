@@ -73,6 +73,8 @@ async function getProductByWebSearch(titulos, linksAmazon, features) {
   const promptId = keepaConfig.PROMPT_ID;
   const version = keepaConfig.VERSION?.toString() ?? "11";
 
+  console.log("versionWebSearch", version);
+
   const input = getInputWebSearch(titulos, linksAmazon, features);
 
   console.log("messagePromptMariano", input);
@@ -80,9 +82,11 @@ async function getProductByWebSearch(titulos, linksAmazon, features) {
     const response = await marianoOpenai.responses.create({
       prompt: {
         id: "pmpt_687e93c54b1c8190a37883ffe6b4e7ea0ba3cf35d12c4773",
-        version: "11",
+        version: version,
+        variables: {
+          user_input: input,
+        },
       },
-      input,
     });
     console.log("responsePromptMariano", response);
     return response.output_text;
