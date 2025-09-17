@@ -9,7 +9,10 @@ const AnalizarPrecioFlow = {
       if (data.asinRegular != null || (data.asin != null && data.asin != "-")) {
         await AnalizarPrecioSteps.BuscarConASINStep(userId, data);
       } else {
-        await AnalizarPrecioSteps.BuscarSinASINStep(userId, data);
+        await AnalizarPrecioSteps.BuscarSinASINStep(userId, {
+          ...data,
+          didWebSearch: true,
+        });
       }
     } else {
     }

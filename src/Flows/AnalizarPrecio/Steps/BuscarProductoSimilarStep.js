@@ -17,7 +17,6 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
   const titulos = data.titulos;
   const features = data.features;
   const linksAmazon = data.linksAmazon;
-
   await enviarMensajePrueba(userId, "Buscando producto alternativo ...");
 
   const mensajes = await KeepaConfigService.obtenerMensajesConfiguracion();
@@ -60,6 +59,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
         titulos,
         retry: data.retry,
         inicio: data.inicio,
+        didWebSearch: data.didWebSearch,
       });
     } else {
       console.log("No se pudo extraer el ASIN de la URL");

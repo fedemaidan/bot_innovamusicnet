@@ -60,18 +60,25 @@ module.exports = async function BuscarConASINStep(userId, data) {
       } ${lastLinkAmazon} \n DISPONIBILIDAD: SI`
     );
 
-    await manejarDelayInteligente(userId, data.inicio);
+    if (!data.didWebSearch) {
+      await manejarDelayInteligente(userId, data.inicio);
 
-    for (const mensaje of mensajePrecios) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      try {
-        await sock.sendMessage(userId, {
-          text: mensaje,
-          linkPreview: false,
-        });
-      } catch (error) {
-        console.error("Error al enviar mensaje:", error);
+      for (const mensaje of mensajePrecios) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        try {
+          await sock.sendMessage(userId, {
+            text: mensaje,
+            linkPreview: false,
+          });
+        } catch (error) {
+          console.error("Error al enviar mensaje:", error);
+        }
       }
+    } else {
+      await enviarMensajePrueba(
+        userId,
+        `MENSAJE PARA USUARIOS DE PRUEBA \n\n ${mensajePrecios.join("\n")}`
+      );
     }
     FlowManager.resetFlow(userId);
   } else if (
@@ -92,6 +99,7 @@ module.exports = async function BuscarConASINStep(userId, data) {
       linksAmazon,
       retry: retry - 1,
       inicio: data.inicio,
+      didWebSearch: true,
     });
   } else if (
     retry <= 0 &&
@@ -103,7 +111,7 @@ module.exports = async function BuscarConASINStep(userId, data) {
     });
     FlowManager.resetFlow(userId);
   } else {
-    sock.sendMessage(userId, {
+    await enviarMensajePrueba(userId, {
       text: "Error al obtener el precio de Amazon" + resultadoKeepa,
     });
     console.log("ERROR EN KEEPPA");

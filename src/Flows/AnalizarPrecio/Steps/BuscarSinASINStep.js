@@ -26,6 +26,7 @@ module.exports = async function BuscarSinASIN(userId, data) {
         retry: data.retry - 1,
         inicio: data.inicio,
         features: [...data.features] || [],
+        didWebSearch: data.didWebSearch,
       });
     } else {
       await enviarMensajePrueba(
