@@ -106,14 +106,18 @@ module.exports = async function BuscarConASINStep(userId, data) {
     !resultadoKeepa.success &&
     resultadoKeepa.error === "No disponible en Amazon"
   ) {
-    sock.sendMessage(userId, {
-      text: "No se pudo encontrar el producto en Amazon. Maximo de intentos alcanzados",
-    });
+    if (!data.didWebSearch) {
+      await enviarMensajePrueba(
+        userId,
+        `No se pudo encontrar el producto en Amazon. Maximo de intentos alcanzados`
+      );
+    }
     FlowManager.resetFlow(userId);
   } else {
-    await enviarMensajePrueba(userId, {
-      text: "Error al obtener el precio de Amazon" + resultadoKeepa,
-    });
+    await enviarMensajePrueba(
+      userId,
+      "Error al obtener el precio de Amazon" + resultadoKeepa
+    );
     console.log("ERROR EN KEEPPA");
     console.log(resultadoKeepa);
     FlowManager.resetFlow(userId);

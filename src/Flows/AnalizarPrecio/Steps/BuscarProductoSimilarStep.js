@@ -63,9 +63,7 @@ module.exports = async function BuscarProductoSimilarStep(userId, data) {
       });
     } else {
       console.log("No se pudo extraer el ASIN de la URL");
-      await sock.sendMessage(userId, {
-        text: mensajes.NO_DISPONIBILIDAD,
-      });
+      await enviarMensajePrueba(userId, mensajes.NO_DISPONIBILIDAD);
       FlowManager.resetFlow(userId);
     }
   }
