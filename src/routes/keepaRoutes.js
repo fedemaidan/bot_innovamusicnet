@@ -1,4 +1,5 @@
 const express = require("express");
+const DEBUG = process.env.PRICE_DEBUG === "1" || process.env.PRICE_DEBUG === "true";
 const {
   calcularPrecio,
   calcularPrecioNuevoMetodo,
@@ -10,13 +11,21 @@ const router = express.Router();
 
 async function obtenerPrecioKeepa(asin) {
   const asinClean = asin.substring(0, 10);
-  const url = `https://api.keepa.com/product?key=${process.env.KEEPPA_KEY}&domain=1&asin=${asinClean}`;
+  const keepaKey = process.env.KEEPPA_KEY || process.env.KEEPA_KEY || "";
+  const url = `https://api.keepa.com/product?key=${keepaKey}&domain=1&asin=${asinClean}`;
 
   try {
     const { data } = await axios.get(url);
     const product = data.products[0];
-    console.log("features", product.features);
-    console.log("productKeepa", product);
+    if (DEBUG) {
+      console.log("[keepaRoutes.obtenerPrecioKeepa] url:", url);
+      console.log("[keepaRoutes.obtenerPrecioKeepa] asin/title:", product?.asin, product?.title);
+      console.log("[keepaRoutes.obtenerPrecioKeepa] weights:", { packageWeight: product?.packageWeight, itemWeight: product?.itemWeight });
+      console.log("[keepaRoutes.obtenerPrecioKeepa] last csv points:", {
+        csv1_last: Array.isArray(product?.csv?.[1]) ? product.csv[1][product.csv[1].length - 1] : null,
+        csv0_last: Array.isArray(product?.csv?.[0]) ? product.csv[0][product.csv[0].length - 1] : null,
+      });
+    }
 
     if (!product) {
       return {
@@ -32,11 +41,13 @@ async function obtenerPrecioKeepa(asin) {
 
     if (asin_list.includes(asinClean)) {
       newPrice = newPrice * 0.92;
+      if (DEBUG) console.log("[keepaRoutes.obtenerPrecioKeepa] asin in discount list -> newPrice *= 0.92:", newPrice);
     }
 
     if (!packageWeight || packageWeight === "N/A" || packageWeight === 0) {
       if (newPrice > 200) {
         packageWeight = 20000;
+        if (DEBUG) console.log("[keepaRoutes.obtenerPrecioKeepa] defaulted packageWeight=20000 due to newPrice>200");
       }
     }
 
@@ -62,6 +73,7 @@ async function obtenerPrecioKeepa(asin) {
       packageWeight,
       categoryTree: product.categoryTree || [],
     });
+    if (DEBUG) console.log("[keepaRoutes.obtenerPrecioKeepa] resultados:", precios);
 
     return {
       success: true,

@@ -1,0 +1,893 @@
+function define_mis_variables_globales() {
+    ?>
+    <script type="text/javascript">
+        // Valores "globales" en JavaScript que antes tenías hardcodeados
+
+
+
+
+        // PONER DECIMALES CON "." no con ","
+
+
+        const DOLARINOVA        = 1400;     // antes 1150. El Dolar que tomamos a los clientes, generalmente es el MEP
+            const DOLAROFICIAL      = 1550;     // antes 1100
+      
+        const DOLAROPERATIVO    = 1600;     // antes 1250
+        const COSTOFIJO         = 10;       // antes 10
+
+
+        
+        	
+        
+            const DESCEFECTIVO      = 0.85;     // antes 0.85
+        const DESCTRANSFERENCIA = 0.909090; // antes 0.909090
+            const RECARGOTARJETA    = 1.1;      // antes 1.1
+        
+            const RATIOKG            = 1.5;     
+        const RATIOP            = 1.71;     // antes 1.71
+        const RATIOC            = 1.55;      // antes 1.6
+        const RATION            = 1.7;      // antes 1.7
+        const FLETEXKG          = 25;       // antes 25
+
+
+        
+    </script>
+    <?php
+}
+add_action('wp_head', 'define_mis_variables_globales');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        add_action('wp_ajax_consultar_precioo', 'consultar_precioo');
+        add_action('wp_ajax_nopriv_consultar_precioo', 'consultar_precioo');
+
+
+        function consultar_precioo() {
+                $asin = isset($_POST['asin']) ? substr(sanitize_text_field($_POST['asin']), 0, 10) : '';
+                $apiKey = "frgspbs92qg4fiqjgp5hil10o1hhqcmrh05ga6vfb953iun257q1or5tht125o3d";
+                $url = "https://api.keepa.com/product?key=" . $apiKey . "&domain=1&asin=" . $asin;
+
+
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_ENCODING , '');
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                $response = curl_exec($ch);
+
+
+                if (curl_errno($ch)) {
+                        echo json_encode(['success' => false, 'error_message' => curl_error($ch)]);
+                        curl_close($ch);
+                        die();
+                }
+                curl_close($ch);
+
+
+                $decoded_response = json_decode($response, true);
+
+
+                if(isset($decoded_response['products'][0])) {
+                        $product = $decoded_response['products'][0];
+                        $title = isset($product['title']) ? $product['title'] : "N/A";
+                        $newPrice = (isset($product['csv'][1]) && end($product['csv'][1]) != 0 && end($product['csv'][1]) !== null) ? end($product['csv'][1]) : (isset($product['csv'][0]) ? end($product['csv'][0]) : "N/A");
+                        $packageWeight = isset($product['packageWeight']) && $product['packageWeight'] != 0 ? $product['packageWeight'] : (isset($product['itemWeight']) ? $product['itemWeight'] : "N/A");
+                        $categoryTree = isset($product['categoryTree']) ? json_encode($product['categoryTree']) : "N/A";
+
+
+                        // Lista de ASINs específicos
+        $asin_list = [
+                'B08YF7PB14', 'B0CMZHDQPD', 'B0BG6M53DG', 'B0BG6KQPWD', 'B0CJMQV8LR', 'B083RVX2FQ', 'B0BDTN8SNJ',
+                'B0B6Q23SPC', 'B0BHXS6HLH', 'B083RW9TJF', 'B0BDS8CT9N', 'B0CJS34SLJ', 'B0CJMVW7FV', 'B0BDTHQTJV',
+                'B0BZQ43XXL', 'B0BQD69ZSF', 'B0CJSL89T2', 'B0BP9LJBP8', 'B0BH9F7DKS', 'B0CTKSFD2X', 'B0BHCJ6KQ2',
+                'B0CQRYXWWQ', 'B0BL8JC76Q', 'B0BL8K1YH1', 'B0CM9V3F2V', 'B0CJMT2723', 'B09YLL91V6', 'B0BL92SPJQ',
+                'B0BHCJDJGF', 'B07QQNSHC6', 'B09KF2442R', 'B07GHJ9LC5', 'B07BDDYK99', 'B0BJNFJY8Y', 'B0B99DHBMM',
+                'B08HDL3XJR', 'B0BJJ5FJ6H', 'B07L77GTTY', 'B07TR7YQ8Y', 'B07TTC8TVQ', 'B08TMBN4C5', 'B08TKPKCWD',
+                'B0BDQ84L6Z', 'B08FXPJNJR', 'B096PS9M7C', 'B0CJ5WSW3W', 'B0B9CG7QZK', 'B0BZ77Q9NV', 'B09TPHJ4SL',
+                'B0BM5448BC', 'B09BTTVJLX', 'B08GKZC2BN', 'B0CM8JZDGV', 'B0C6J5KWST', 'B0CB4JGNHX', 'B09CJGQ9MJ',
+                'B0C4KWSFBW', 'B08GL2DSKZ', 'B0C8CYW4ZB', 'B0B4RBHX6V', 'B0BCXT6BSP', 'B08TBT6ZZQ', 'B07XF2G9WT',
+                'B0CKXWQQNP', 'B0CNWM4VJN', 'B0C6G17HNF', 'B08V54BPK3', 'B0C8WWS1DW', 'B08M8P53L8', 'B00KJFHMY8',
+                'B076MHKTFH', 'B0CKTHB5V1', 'B0C74CHLZP', 'B01MR0EMOV', 'B095KWG1VK', 'B08GL46FST', 'B0C48G71CH',
+                'B0BP2TGDBT', 'B078NCG82N', 'B0CFS5GRTF', 'B0BWGXHVRV', 'B07V1Y3P64', 'B09WDRCPW8', 'B00PA9LO1U',
+                'B08JVHJWQT', 'B079Q174RF', 'B079Q8TNNG', 'B07969FY7H', 'B09BKC6T3S', 'B06W9NM7PW', 'B07GLFY8JQ',
+                'B00MZCCDHE', 'B0B8Z1YF1Q', 'B09T3DH64Z', 'B094N3PZ4W', 'B0D1G4GBHS', 'B0BVB8B1KB', 'B01M72AXMP',
+                'B093N3CCY5', 'B0B7P6VYZF', 'B0B92KVZMG', 'B0CD883YJW', 'B08P5HXJZS', 'B0B9ZTPCC6', 'B00MZCCH84',
+                'B09NBLTWRW', 'B0CD89X8KG', 'B00MZCCGXA', 'B0D45LMB42', 'B00UTK8224', 'B0B1V5MJV9', 'B0CDQGNYS6',
+                'B09YCSBBJK', 'B0BCL1V3T6', 'B07BFH455V', 'B09FXQMSNF', 'B089N5RDSZ', 'B09R4WZDJ8', 'B09H39Z257',
+                'B0CQYCSXY1', 'B0B778GH27', 'B07288S3QS', 'B086R79PBC', 'B0CJ9Y9N3K', 'B0B776W3XR', 'B09KH7FZW9',
+                'B01HQ4BGNM', 'B015MFNIQU', 'B08D6PK4HH', 'B0CFPF7TJ5', 'B0798BTVPR', 'B01CC6KVFS', 'B08SQFHJQY',
+                'B0B3LMJLVC', 'B095XF7W1G', 'B07Y5G8VHR', 'B07N7LHJ6V', 'B0CJ5TRH5F', 'B08GRNMKYM', 'B01C3SCKHW',
+                'B002NLHXQ8', 'B00OCACLQ0', 'B06XR9VDK8', 'B09YMYJGW5', 'B09BJQ8Y7N', 'B09BJQW53R', 'B08N5LTPWZ',
+                'B006J3Q18C', 'B07S1WJGQF', 'B06XDW8S94', 'B06XDYB7TZ', 'B0C8WMLZ78', 'B08WYPWXX6', 'B01LZ4IW8A',
+                'B07Z5M9M7M', 'B09X6BQCGM', 'B001S2PPT0', 'B01C3SCKI6', 'B07NLQ46M2', 'B01N2XBZ6W', 'B08M91FQW6',
+                'B07WFQYJYP', 'B00PGNMXQA', 'B0B2KSJBR4', 'B09JBJKRBZ', 'B00THOYRN6', 'B0076BNK30', 'B07WQ54BL8',
+                'B09HVBDKFY', 'B00DBL0NLQ', 'B013HLKB8Y', 'B0BRQSBJKG', 'B08MQBVFVW', 'B013D1BI9Y', 'B07KD3CMGS',
+                'B071PFFSKM', 'B00005NPOB', 'B07DFVF7M4', 'B07H4SFG4G', 'B00KAQX65A', 'B07KCZN72X', 'B002NEGTSI',
+                'B07GWF4T6Z', 'B00EFILVQU', 'B00X8MRBCW', 'B0777VG41C', 'B01KURGS9O', 'B01L74R85W', 'B07GSJQXRM',
+                'B00006I53X', 'B00K899B9Y', 'B077BWD2BB', 'B00NI3BZ5K', 'B00NGTN0Y0', 'B09YYY6P98', 'B00C94WIK0',
+                'B0CBQR21K3', 'B07HCP1JG3', 'B0B8PDHRWY', 'B0CDQZ4WJ6', 'B07HH1PVRZ', 'B07YX8Q62H', 'B0BL7X3KLV',
+                'B07RHW4D5P', 'B09ZBLV8TM', 'B07N9KDCGV', 'B0C5LNKYLP', 'B0CPQ44NB5', 'B0B8PD8TTP', 'B083K41K2S',
+                'B0BTTWH46K', 'B07MV3P7M8', 'B07C2Z21X5', 'B0BTTTH5G6', 'B08L614R6K', 'B01KURGS9E', 'B0CMV98DP2',
+                'B0CH1QCDPS', 'B07NSMJX2K', 'B0BLTDSVM2', 'B0CGTTVYGM', 'B086TTTZR5', 'B09DTHG54V', 'B08DCRHZZJ',
+                'B0BYQJJYF7', 'B0C4ZQWDGC', 'B0BN4Q6CTZ', 'B0CS4NMS53', 'B0BK21BS6Y', 'B0BL7ZVY78', 'B0BCLYBK1F',
+                'B0BDP1Q4NS', 'B0CBN8Y77Z', 'B06Y5ZCFHX', 'B0C5PM5YH6', 'B09GL1L694', 'B09FFTM3F6', 'B0BNJLSTQ4',
+                'B011PKJI2Y', 'B07QBD256Y', 'B07YXH2DLL', 'B07YX9DJ46', 'B0BN6XNJVQ', 'B0C4Q7ZBLS', 'B0C4Q71JBY',
+                'B09M7JMBKY', 'B0BG662VBB', 'B08PZHYWJS', 'B0CCSY7H62', 'B0073A4FM4', 'B091PNH6B9', 'B00PXLX2TC',
+                'B07JYLGDSL', 'B0CH3ZFR4K', 'B08WJZF45B', 'B08TDBZPVW', 'B08ZYY5PJP', 'B08JNN5CM7', 'B08WJW12JW',
+                'B07N95QQX5', 'B09TQ7NH72', 'B07JYPCQ96', 'B00NIHDM0C', 'B00NIHCGWW', 'B00NIHDT4Q', 'B08L5Z4355',
+                'B0BXZW1RMM', 'B0BK1YPRNN', 'B0C2JGVJ4C', 'B0CCBXGG37', 'B08BW8H44J', 'B084BKKX8T', 'B06Y5RTN1T',
+                'B07RC8HPHL', 'B01AA093UW', 'B0CBSKP21N', 'B0C5PGRP7V', 'B083K41SKC', 'B0BL7VMPDT', 'B0BWV8D6S6',
+                'B08C6CWVNZ', 'B07WFQYDD5', 'B084P1VZWM', 'B0B27KKNZV', 'B09BBLH4SG', 'B0CMC3TKYG', 'B0945R3K6G',
+                'B0C83LZDZ1', 'B0BTTV6CT1', 'B07QFFNCG4', 'B0BTTVW3TX', 'B0CM9WR78F', 'B07B43WPVK', 'B0B8PD95K3',
+                'B0BPMB8JHG', 'B0C15KZKCW', 'B0B2KV35NX', 'B07YXH9LXV', 'B07DGLSJNN', 'B07KD1P5ZY', 'B083K3C5P2',
+                'B07KD472S9', 'B0037KM0XA', 'B00007GQLS', 'B000I1YIDQ', 'B07H489XDQ', 'B01DLMD5O6', 'B09JVBB36L',
+                'B001GCVA0U', 'B09HMVJL47', 'B07DFSNT1D', 'B081L5HJBP', 'B09FFV6WF5', 'B0C8QL89L5', 'B073V6HXZZ',
+                'B00NLBGD1A', 'B07KD37RMD', 'B07KD3Y6SL', 'B0BL1XF79J', 'B00KAQX66Y', 'B0B2KTYBPM', 'B084BKXDLD',
+                'B06WLH9D44', 'B013TFOT72', 'B01LXTX4WY', 'B00007GQLU', 'B0CMDFX1G9', 'B00PF39PEY', 'B08QM6FCV9',
+                'B09X6F68SJ', 'B0C6XTB8TG', 'B08ZYGFG8F', 'B0BTWKS836', 'B0C69YJGGY', 'B08VFH2VSP', 'B09ZK4LN92',
+                'B09MSNVK6K', 'B0BSVQ12MS', 'B0BY9FPSSQ', 'B09ZKLP7JZ', 'B08PF3PMGN', 'B09ZQ3QN8K', 'B00COJO7WC',
+                'B0BWJN495W', 'B09Z7KGTVW', 'B0C8VKH1ZH', 'B0BZYXDG3K', 'B0C5GCYZS5', 'B0CD1JTBSC', 'B0962LK37V',
+                'B08HQBCHCD', 'B01M0KZIE6', 'B072W936QV', 'B0C5R3HVPC', 'B005CSLWGG', 'B0BJJ4TTRW', 'B00FJP5ZME',
+                'B00GNHOFQO', 'B0CNDBT3NX', 'B0D5XRY91N', 'B0BSLWGFXD', 'B086KJBKDW', 'B0CQBL6RJ6', 'B0CG7NVGQ2',
+                'B0BYQ7Q6SB', 'B08C68F2DX', 'B0BTQSVVJH', 'B0BMPR522C', 'B0101RW3QK', 'B0C6C3ZYD3', 'B07ZQQ7HMV',
+                'B09DTK6KMH', 'B01L8U5924', 'B08DRXSMWD', 'B0CHTHLVHS', 'B01D40AUFW', 'B0BTTW292G', 'B075KTJJPC',
+                'B07ZRZLHH4', 'B07FVXZ3R1', 'B07FXXVC74', 'B0B2KV6D97', 'B0BTTVH7VF', 'B0CJDHSFTN', 'B09L3784KG',
+                'B0B2KSD7WW', 'B075VCWMVY', 'B0CL113992', 'B09JZT6YK5', 'B0CN1PCH1Y', 'B0B46QS9GZ', 'B01M02QGGA',
+                'B00009XVCZ', 'B00K8942SO', 'B0CHDTW3NM', 'B0C7SV3QHB', 'B08GL4QSFH', 'B0C6N1TQ9B', 'B0BZM2QQKY',
+                'B0B4QV9YV6', 'B01N0YGEQT', 'B0BCXTVXMC', 'B0CDVH5N9G', 'B09P6821X6', 'B08YP4TWKQ', 'B0B3Y3MMD7',
+                'B0787L2SLH', 'B0BKLQFFSF', 'B0C6KKF56F', 'B0BX5H4DC5', 'B0BJPDN443', 'B009724JZY', 'B0BJPXD39Q',
+                'B0BWPHBSJ7', 'B006D1NKFC', 'B0BDQMYRXK', 'B0BMXVPDGY', 'B0BWPT5DM3', 'B0B8QQH2QB', 'B07SV58VVY',
+                'B07C5MFN1Z', 'B00W0SFQ86', 'B09YMZYTRY', 'B0CKJ9H695', 'B0B52CDFVL', 'B0BCN6325Y', 'B0BCLWJMZ1',
+                'B0BDGCY7XN', 'B07DD14923', 'B0CGXZGSFH', 'B08WX7BMHB', 'B07WC4NNBM', 'B07N13ZY8Z', 'B07DGLL7BJ',
+                'B07QX5T3RP', 'B00JKUPRF4', 'B07SZXDN9X', 'B096B7933Y', 'B08J7FDF6G', 'B084QP747Q', 'B0C44CYR9T',
+                'B0037HPVHU', 'B00A35X6NU', 'B00OIZO626', 'B0040YEFKI', 'B0040X4OZU', 'B07H4F64XL', 'B06C802332',
+                'B06C802345', 'B06C802370', 'B06C802372', 'B09RQ5R1QV', 'B06C802344', 'B06C802353', 'B06C802356',
+                'B09RQ5Z7G4', 'B06C802346', 'B06C802337', 'B06C802333', 'B06C802350', 'B06C802335', 'B06C802351',
+                'B06C802343', 'B06C802373', 'B06C802334', 'B06C802358', 'B09RQ5BGXZ', 'B06C802354', 'B06C802361',
+                'B0BJZDZ59Q', 'B06C802349', 'B0C82B6774', 'B06C802359', 'B06C802338', 'B09RQ61D6Q', 'B06C802347',
+                'B0BJZCL85G', 'B0778QRT85', 'B06C802371', 'B0BRT27VT4', 'B06C802348', 'B0BJZ2ZDFV', 'B06C802342',
+                'B06C802336', 'B06C802352', 'B0CNS4YNYK', 'B06C802357', 'B06C802341', 'B0BJZMDQF8', 'B00940DHOS',
+                'B06C802355', 'B06C802360', 'B0CNS2M59G', 'B0BBXZDS6V', 'B079N2W185', 'B09TZYJ9F7', 'B06C802367',
+                'B087WHF5C7', 'B07WJJ14V9', 'B073BMLSN6', 'B014C0HDWG', 'B07Q8Q6QK9', 'B01N5JYXVI', 'B07H4LRRRQ',
+                'B009FQST76', 'B08K3P3978', 'B09S369772', 'B073X5XRX4', 'B000U9SBU2', 'B093XDX3JQ', 'B07H4CRLYF',
+                'B078XGS4TC', 'B07H4CR6Y9', 'B00O468PCG', 'B0CMCMFGXT', 'B06Y3N78TS', 'B011GF2Q7M', 'B06XV1YNSB',
+                'B08GCX1W1D', 'B07SV5C7W8', 'B000U9OFLG', 'B00NANC38G', 'B07XXQBGFX', 'B019QRX766', 'B00009XVDP',
+                'B091R4HCG4', 'B001TDL2O0', 'B001GNCWCE', 'B07H4RG6JJ', 'B0B69QZ1DJ', 'B0D5ZJ2XJ9', 'B09NLBL2F1',
+                'B000EW8074', 'B074VQ6SGM', 'B091RL6FL3', 'B0001G6U48', 'B0B69P2LJG', 'B07Z5M2MDJ', 'B07H4VNJHF',
+                'B09M62RJK2', 'B08C6Y8KS3', 'B08C73SG8N', 'B014EOML6S', 'B07RB7SHD7', 'B07YXBWK3W', 'B00A2BVBTG',
+                'B00CQGF8H6', 'B09TL8224F', 'B0C3498X6T', 'B09TL71BNG', 'B000V5K3FG', 'B001TDL2OA', 'B08C6Z5F2L',
+                'B01KURGS8U', 'B0046VZHYS', 'B08P3S6HR4', 'B005OCZOA0', 'B000GE403I', 'B01B87L6T2', 'B009YM8CH8',
+                'B0BN4D8GCH', 'B000JCBB7K', 'B091FYL57X', 'B00025XH8U', 'B000ZLV77E', 'B002RL8TS0', 'B004PEHFKU',
+                'B0749QMZ4Q', 'B0887W86TP', 'B017L4KYDU', 'B08WK1DP75', 'B008ZT8JCE', 'B003BQKGOA', 'B07L5T98DG',
+                'B006T5HOWC', 'B0046JJSCM', 'B0749QLHFG', 'B00OM0ASBK', 'B017L4KIXQ', 'B0D36D9TPX', 'B000AQDSMQ',
+                'B0002J4IX4', 'B0006NGVO0', 'B016P3E9VG', 'B07QQVFYZ1', 'B085FPSNJN', 'B01BDAB6C6', 'B003YM5KWO',
+                'B01NAVWRB1', 'B003BQKGPY', 'B09X56KQ3R', 'B000Z7JK72', 'B004PEHFLO', 'B0754KT32C', 'B00M0SVY5K',
+                'B003CLT4GA', 'B002A4DHU4', 'B001TE2MKW', 'B000ZLOGCC', 'B008ZT8DVQ', 'B000BQ79W0', 'B07ZM6KWS8',
+                'B009RUG8PK', 'B06C802322', 'B0B6QBSGC4', 'B00947AFUK', 'B004PEHFFU', 'B017L4KOBW', 'B09NZBRFSJ',
+                'B000U7B90I', 'B00MIXFBL0', 'B00OQUJ362', 'B07S63K5N9', 'B09SVN6J35', 'B00OY6718K', 'B09TQ5HVB3',
+                'B08C5NH1LR', 'B08PN6PLH2', 'B07SK9L5KT', 'B08Q5WXCVM', 'B08GYL58L4', 'B08F8HL7T7', 'B0B2RGXV27',
+                'B0BN4GKHJL', 'B00OY670QS', 'B0D1LFQXV6', 'B07N3FJ6PB', 'B00KCXMBES', 'B08BJ9V8F7', 'B07N3FDT3M',
+                'B0CSL83SYC', 'B07WRDLNQZ', 'B06C802327', 'B0C9F5YC5P', 'B07XFGVCKQ', 'B0797P22HY', 'B06C802323',
+                'B078PTM82R', 'B07HPDRG11', 'B08MVF1F5X', 'B0BT571JKW', 'B086653VSH', 'B00AM9SLVO', 'B0BN4J2WZR',
+                'B097FCMGFJ', 'B09B34V6GM', 'B09CWB2GRM', 'B0CSLDLKZJ', 'B00DFU9BRK', 'B093LFP3RD', 'B0CB6TLV5Z',
+                'B06C802324', 'B0B6YYPZY6', 'B07H4LGZ1C', 'B01A7Q0N9Y', 'B08PNNNB1X', 'B07QFR15LW', 'B07QJY1Q2N',
+                'B0D5ZJJNR2', 'B07DHW57CP', 'B09NYC6PCQ', 'B01AG4FB1W', 'B08DK4KC3N', 'B06C802378', 'B076LW6VTC',
+                'B08ZHV88JW', 'B0C3C9SBB2', 'B0716RHXRB', 'B0B6W6XPQB', 'B0B4DMV384', 'B014C118K8', 'B0711KZVN3',
+                'B0BX4QTVVY', 'B011LNQ7NS', 'B008NF8CEK', 'B0BQHJDD6X', 'B07H4LJVL4', 'B07P2CH43B', 'B06XV22DT2',
+                'B0D4GN3QLG', 'B07L3RM817', 'B0B72FC2QY', 'B07XZLNV4W', 'B0CKX6RSCH', 'B0C34GV9ZC', 'B090001550',
+                'B0CQ3PYP6X', 'B08DCJNTBX', 'B06C802363', 'B0B9F9KVWC', 'B06C802377', 'B07WHV3HXL', 'B01KURGS9Y',
+                'B0101S4BSM', 'B06C802328', 'B07PDJ3Y4N', 'B08BVXBG6J', 'B06C802374', 'B090001387', 'B07N9KP2HS',
+                'B0C5P59T9J', 'B082YW4VPM', 'B09883MWLL', 'B07H489ZP4', 'B0BF985W1S', 'B072MZCJKN', 'B0BTTVKVBW',
+                'B0018D1732', 'B00MHSCLSW', 'B004TGBWE4', 'B07H4G9ZKW', 'B0101SX48U', 'B06C802331', 'B096DHS1BF',
+                'B000V5P94Q', 'B00NI3C8A6', 'B06C802369', 'B002NEGTT2', 'B06C802330', 'B008UGMLWQ', 'B0BTTTHPXS',
+                'B01BUYJYOW', 'B09FFTB9V6', 'B07TPYK34N', 'B0002Y5WXE', 'B08M8QPS1V', 'B06C802368', 'B00CRU42OQ',
+                'B09RNBL1SV', 'B0CZRYDM8J', 'B01LEEY6CS', 'B097Z21LGH', 'B0BL7XX45D', 'B00009R6WO', 'B0002JETVU',
+                'B07W14LX76', 'B00OOIQ45Y', 'B0002TTN3Y', 'B09KMDYKDG', 'B09FW5F6R9', 'B003Y55WNS', 'B0002GYSNC',
+                'B0002M6WYO', 'B00E4XNJYI', 'B000ZLV5P8', 'B0002L9I6E', 'B002XOJMAA', 'B01INVJ6RU', 'B008ZT8OVU',
+                'B002A4KEDM', 'B00066NAQO', 'B010W6WESM', 'B09F634188', 'B00075ZTHM', 'B08W29CFHL', 'B09CP78H4V',
+                'B07V9PCCWG', 'B0012ILNK0', 'B001XWHACU', 'B017L4KWMS', 'B0010H82WA', 'B06C802321', 'B08X7KCCV7',
+                'B0015NRTC8', 'B003Y5D3CK', 'B007YCG0JM', 'B0006HB736', 'B06XT8L1TV', 'B008ZT7O7A', 'B08YBTM7K8',
+                'B004PEHFMI', 'B01EM70BE6', 'B0002PZ01C', 'B001XWIX62', 'B000G0GX5K', 'B00P07QDZE', 'B0CVLD37RJ',
+                'B003ZZV5SI', 'B003BQBKG8', 'B003Y5CZ9C', 'B09N8TTHBQ', 'B00OSY6Q5M', 'B01NA9OL98', 'B07K9MTZPP',
+                'B001XWBX1Y', 'B01INVSKAY', 'B0002JETTC', 'B001UDHGMQ', 'B07Q8Q6P54', 'B01C7A3W7S', 'B01CCL26GK',
+                'B07QQNLF19', 'B09HJTHH19', 'B073B2WHQY', 'B011T84GVA', 'B06C802339', 'B06C802340', 'B0CZSFCMM6',
+                'B0B775NSZK', 'B07RRP1NHY', 'B0CZSCM1J3', 'B0CSW5LB5L', 'B07FBB4DPB', 'B079LVCWBR', 'B071K62DZT',
+                'B098859BQ1', 'B084F4GM6Y', 'B06C802376', 'B0B27NSHB4', 'B01B6OTTIM', 'B08XWNCSZB', 'B0BXHYW2XS',
+                'B07YV8R6B1', 'B06C802375', 'B0BNJWHYDJ', 'B090001647', 'B06C802362', 'B09KHC4XCT', 'B08PMHLMW3',
+                'B06C802325', 'B09F6H5R8H', 'B0BGM5WRQ1', 'B08MQPFGJ1', 'B09RQ72911', 'B06C802329', 'B01KZ4XPCK',
+                'B074VPX4VD', 'B00T3ERXKE', 'B009P3XW4O', 'B0BL5FKJF7', 'B07C5QKNRV', 'B074VQ6SGK', 'B0CMDC61MZ',
+                'B0C66JMX91', 'B0002GZHQ4', 'B01LZ7UN44', 'B013TPZ2O6', 'B07BKMRJ1L', 'B0002U3S0M', 'B0002GYVZW',
+                'B07VFBK2XD', 'B0002OD7GS', 'B09MMC6MR6', 'B008LV09LA', 'B00QJUDA0W', 'B0002BBOOS', 'B00XWG2YBW',
+                'B01INVSNTW', 'B074FVLMJQ', 'B003ZZTOAY', 'B001TQ0RHU', 'B000T9HDC0', 'B008ZTAL0M', 'B0002YLBRK',
+                'B008ZT7NFI', 'B07T4HS6WN', 'B00ZCOPH1Q', 'B00GJW0JGI', 'B0B77VDC5R', 'B000ZLRT9O', 'B07THLHW8R',
+                'B002L0TK62', 'B08T9WR2L6', 'B0002KLM8W', 'B07FJP5NZQ', 'B00V66XWTI', 'B000ZLQ47M', 'B003ZZXLPS',
+                'B0C7XM221Y', 'B001CITVNQ', 'B08X945J6T', 'B00ON21P5U', 'B008ZT7OLQ', 'B01LYYYZBW', 'B00SLOJFJE',
+                'B00A7HKHWW', 'B07Z5M26QG', 'B008ZT7O3E', 'B06XT16Y35', 'B07QZ2XD1B', 'B07K3ZDDBX', 'B08G7B5P13',
+                'B01K1WU2H2', 'B01INVJ332', 'B01N3Z0IXN', 'B000UXIEPU', 'B0CT41QPF8', 'B0CZ4JX9JW', 'B08P2FH2M9',
+                'B0CPTLJ2MC', 'B0CJP4MQZ8', 'B06C802326', 'B08NCLXMSB', 'B0885633DW', 'B09P4RRFZY', 'B0CCGHK7B9',
+                'B0BDR29SWT', 'B07XZKRDLB', 'B0C2JKMMSW', 'B06C802364', 'B06C802365', 'B06C802366', 'B0948CG3KH',
+                'B0877ZBVPY', 'B0013AV2WQ', 'B09T6JPG27', 'B001TPX6VK', 'B0002PSCQW', 'B001M9YPOA', 'B07QR764QH', 
+                'B0D2JLJ73N', 'B08P4D86D7', 'B08B9CBMY2', 'B0115XR01C', 'B09P83WC6Q', 'B07P8N2792', 'B0CR9WX1ZW', 'B0CCDXCMYW', 'B09SVTFW4T', 'B0CG44TYFH', 'B0C9QB79QH', 'B0BN8CQ571', 'B015WD6YYU', 'B09QCTJ2DZ', 'B09QL53QYX', 'B07RP447DL', 'B08P3VQR6B', 'B09LX2LTD4', 'B0BN9SNZ19', 'B0D5QXY5JN', 'B0C3J45FCD', 'B0B8F5BYNG', 'B0B8F1ZDQM', 'B0B8F12WSV', 'B0B8F3G9VC', 'B0B8DZVQQ1', 'B0B8DYJXN3', 'B0B8DZTHRK',
+        'B0B8F2C3KB', 'B083RCR7GQ', 'B0CQ88V84S', 'B0CQ8727NP', 'B0CQ87HWWY', 'B0CQ89JFYY', 'B07MWHT1GZ',
+        'B0BBGRK7QL', 'B0CN9CMC9B', 'B0CN9FPBL6', 'B0B8YFY4Q1', 'B085NDDSG8', 'B0CTYJTQHH', 'B08ZQ45MCG',
+        'B0977Q3K8V', 'B016WEEK5S', 'B00FF3X374', 'B005FHWM4K', 'B084RCVK14', 'B08L5M374S', 'B008465KMU',
+        'B000EWW2T6', 'B001AGO9SW', 'B0CMC94TR1', 'B0CMC7SM4X', 'B0C62KRCNV', 'B0CCT5WYTN', 'B076H6XQBY',
+        'B0757R54WH', 'B09T3VLF2L', 'B0BGSB14H6', 'B0CNSM9X9C', 'B07X4GP8GZ', 'B00LYBQS7I', 'B09XBYL17Z',
+        'B09XGGGNDK', 'B009UZGIRU', 'B01MSHM6DU', 'B07SG75RQM', 'B07FLKVD7H', 'B0CK4YNBGQ', 'B09W372R59',
+        'B0C34T7PG7', 'B096YSQ3XL', 'B0CM9WSJKX', 'B085S7YFHY', 'B0C37SJG71', 'B08BX5KC48', 'B09613J26S',
+        'B07L41K54X', 'B0BSBVPWCV', 'B07DC3FF3F', 'B07X9F6NDX', 'B0BYFBVDQG', 'B08W8TRBQP', 'B00ED3389K',
+        'B08T21QT5K', 'B00JH3WJIC', 'B0CLH6NC9X', 'B0CPT9MJ5B', 'B0CPTC9W1T', 'B09M41627S', 'B0BLH7Q71T',
+        'B00FJWPSH4', 'B0CDFFVBBS', 'B0CH1WD2PG', 'B0BJVTX2HB', 'B0D3M7P3PP', 'B093LVKZP2', 'B09YXHR5XV',
+        'B09ZQRY7MP', 'B0D1Y41HL9', 'B0D2RCKGW7', 'B0979PLPZ4', 'B0D9Y6R7ZC', 'B0CHHLWDS2', 'B0D4YGP8JR',
+        'B0C8B76PVX', 'B0BB7C8F85', 'B0BG5JPX2B', 'B0BYZWFZ56', 'B09YCW1F95', 'B0B2PN9BXP', 'B0CHVGCBB2',
+        'B07HVX94PT'
+
+
+        ];
+
+
+                        // Si el ASIN está en la lista, multiplica el newPrice por 0,75
+                        if (in_array($asin, $asin_list)) {
+                                $newPrice = $newPrice * 1;
+                        }
+
+
+                        if ($packageWeight === "N/A" || $packageWeight == 0) {
+                                if ($newPrice > 200) {
+                                        $packageWeight = 20000; // Asignar 20000 si newPrice es mayor a 200
+                                }
+                        }
+
+
+                        if ($newPrice === "N/A" || $newPrice < 10 || $packageWeight === "N/A" || $packageWeight == 0) {
+                                echo json_encode([
+                                        'success' => false,
+                                        'error_message' => '<strong>Contactanos por WHATSAPP 📲💬</strong> +54 1169203190 o <strong>E-MAIL✉️</strong>  info@inovamusicnet.com y te confirmaremos el Precio Final 💵 a la brevedad ⏳.<br>' .
+                                                                           '<img src="https://www.inovamusicnet.com/wp-content/uploads/2023/04/WhatsApp_icon-1.png" alt="Contactar Whatsapp" id="contact-whatsapp" class="contact-icon">' .
+                                                                           '<img src="https://www.inovamusicnet.com/wp-content/uploads/2023/04/icono-correo-concepto-mensaje-correo-electronico-entrante-simbolo-o-notificacion-sms-dispositivos-electronicos-ilustracion-vectorial-plano_186332-11291-modified-1.png" alt="Contactar Mail" id="contact-mail" class="contact-icon"><br>' .
+                                                                           '<strong><i>Si Añadís al Carrito 🛒 se te cobrará un anticipo 💳 y luego te enviaremos el 💲 Precio Final 💰 al Mail registrado 💼🤝.</i></strong><br><br>'
+                                ]);
+                        } else {
+                                echo json_encode([
+                                        'success' => true,
+                                        'title' => $title,
+                                        'newPrice' => $newPrice,
+                                        'packageWeight' => $packageWeight,
+                                        'categoryTree' => json_encode($categoryTree)
+                                ]);
+                        }
+                } else {
+                        echo json_encode([
+                                'success' => false,
+                                'error_message' => '<strong>Contactanos por WHATSAPP 📲💬</strong> +54 1169203190 o <strong>E-MAIL✉️</strong>  info@inovamusicnet.com y te confirmaremos el Precio Final 💵 a la brevedad ⏳.<br>' .
+                                                                   '<img src="https://www.inovamusicnet.com/wp-content/uploads/2023/04/WhatsApp_icon-1.png" alt="Contactar Whatsapp" id="contact-whatsapp" class="contact-icon">' .
+                                                                   '<img src="https://www.inovamusicnet.com/wp-content/uploads/2023/04/icono-correo-concepto-mensaje-correo-electronico-entrante-simbolo-o-notificacion-sms-dispositivos-electronicos-ilustracion-vectorial-plano_186332-11291-modified-1.png" alt="Contactar Mail" id="contact-mail" class="contact-icon"><br>' .
+                                                                   '<strong><i>Si Añadís al Carrito 🛒 se te cobrará un anticipo 💳 y luego te enviaremos el 💲 Precio Final 💰 al Mail registrado 💼🤝.</i></strong><br><br>'
+                        ]);
+                }
+                die();
+        }
+
+
+        function add_contact_buttons_styles() {
+                ?>
+                <style>
+                        .contact-icon {
+                                display: inline-block;
+                                width: 40px;
+                                height: 40px;
+                                margin: 5px;
+                                cursor: pointer;
+                        }
+                </style>
+                <script type="text/javascript">
+                        (function($) {
+                                $(document).on('click', '#contact-mail', function() {
+                                        var productTitle = ''; // Obtén el título del producto según tu lógica
+                                        var productLink = window.location.href;
+                                        var emailMessage = 'mailto:info@inovamusicnet.com?subject=Consulta%20de%20Producto&body=LINK%20WEB:%20' + productLink + '%0D%0A%0D%0A' + 'Hola Quiero consultar por el Producto:%0D%0A%0D%0A' + productTitle;
+
+
+                                        window.open(emailMessage, '_blank');
+                                });
+
+
+                                $(document).on('click', '#contact-whatsapp', function() {
+                                        var productTitle = ''; // Obtén el título del producto según tu lógica
+                                        var productLink = window.location.href;
+                                        var whatsappMessage = 'https://api.whatsapp.com/send?phone=+541169203190&text=' + encodeURIComponent('LINK WEB: ' + productLink + ' ' + '_*Hola que tal? Quiero consultar por el Producto:*_ ' + ' *** ' + productTitle);
+
+
+                                        window.open(whatsappMessage, '_blank');
+                                });
+                        })(jQuery);
+                </script>
+                <?php
+        }
+        add_action('wp_footer', 'add_contact_buttons_styles');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        add_action('wp_ajax_consultar_precioo', 'consultar_precioo');
+        add_action('wp_ajax_nopriv_consultar_precioo', 'consultar_precioo');
+
+
+        function consultar_precioo() {
+                $asin = isset($_POST['asin']) ? substr(sanitize_text_field($_POST['asin']), 0, 10) : '';
+                $apiKey = "frgspbs92qg4fiqjgp5hil10o1hhqcmrh05ga6vfb953iun257q1or5tht125o3d";
+                $url = "https://api.keepa.com/product?key=" . $apiKey . "&domain=1&asin=" . $asin;
+
+
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_ENCODING , '');
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                $response = curl_exec($ch);
+
+
+                if (curl_errno($ch)) {
+                        echo json_encode(['success' => false, 'error_message' => curl_error($ch)]);
+                        curl_close($ch);
+                        die();
+                }
+                curl_close($ch);
+
+
+                $decoded_response = json_decode($response, true);
+
+
+                if(isset($decoded_response['products'][0])) {
+                        $product = $decoded_response['products'][0];
+                        $title = isset($product['title']) ? $product['title'] : "N/A";
+                        $newPrice = (isset($product['csv'][1]) && end($product['csv'][1]) != 0 && end($product['csv'][1]) !== null) ? end($product['csv'][1]) : (isset($product['csv'][0]) ? end($product['csv'][0]) : "N/A");
+                        $packageWeight = isset($product['packageWeight']) && $product['packageWeight'] != 0 ? $product['packageWeight'] : (isset($product['itemWeight']) ? $product['itemWeight'] : "N/A");
+                        $categoryTree = isset($product['categoryTree']) ? json_encode($product['categoryTree']) : "N/A";
+
+
+                        // Lista de ASINs específicos
+        $asin_list = [
+                'B08YF7PB14', 'B0CMZHDQPD', 'B0BG6M53DG', 'B0BG6KQPWD', 'B0CJMQV8LR', 'B083RVX2FQ', 'B0BDTN8SNJ',
+                'B0B6Q23SPC', 'B0BHXS6HLH', 'B083RW9TJF', 'B0BDS8CT9N', 'B0CJS34SLJ', 'B0CJMVW7FV', 'B0BDTHQTJV',
+                'B0BZQ43XXL', 'B0BQD69ZSF', 'B0CJSL89T2', 'B0BP9LJBP8', 'B0BH9F7DKS', 'B0CTKSFD2X', 'B0BHCJ6KQ2',
+                'B0CQRYXWWQ', 'B0BL8JC76Q', 'B0BL8K1YH1', 'B0CM9V3F2V', 'B0CJMT2723', 'B09YLL91V6', 'B0BL92SPJQ',
+                'B0BHCJDJGF', 'B07QQNSHC6', 'B09KF2442R', 'B07GHJ9LC5', 'B07BDDYK99', 'B0BJNFJY8Y', 'B0B99DHBMM',
+                'B08HDL3XJR', 'B0BJJ5FJ6H', 'B07L77GTTY', 'B07TR7YQ8Y', 'B07TTC8TVQ', 'B08TMBN4C5', 'B08TKPKCWD',
+                'B0BDQ84L6Z', 'B08FXPJNJR', 'B096PS9M7C', 'B0CJ5WSW3W', 'B0B9CG7QZK', 'B0BZ77Q9NV', 'B09TPHJ4SL',
+                'B0BM5448BC', 'B09BTTVJLX', 'B08GKZC2BN', 'B0CM8JZDGV', 'B0C6J5KWST', 'B0CB4JGNHX', 'B09CJGQ9MJ',
+                'B0C4KWSFBW', 'B08GL2DSKZ', 'B0C8CYW4ZB', 'B0B4RBHX6V', 'B0BCXT6BSP', 'B08TBT6ZZQ', 'B07XF2G9WT',
+                'B0CKXWQQNP', 'B0CNWM4VJN', 'B0C6G17HNF', 'B08V54BPK3', 'B0C8WWS1DW', 'B08M8P53L8', 'B00KJFHMY8',
+                'B076MHKTFH', 'B0CKTHB5V1', 'B0C74CHLZP', 'B01MR0EMOV', 'B095KWG1VK', 'B08GL46FST', 'B0C48G71CH',
+                'B0BP2TGDBT', 'B078NCG82N', 'B0CFS5GRTF', 'B0BWGXHVRV', 'B07V1Y3P64', 'B09WDRCPW8', 'B00PA9LO1U',
+                'B08JVHJWQT', 'B079Q174RF', 'B079Q8TNNG', 'B07969FY7H', 'B09BKC6T3S', 'B06W9NM7PW', 'B07GLFY8JQ',
+                'B00MZCCDHE', 'B0B8Z1YF1Q', 'B09T3DH64Z', 'B094N3PZ4W', 'B0D1G4GBHS', 'B0BVB8B1KB', 'B01M72AXMP',
+                'B093N3CCY5', 'B0B7P6VYZF', 'B0B92KVZMG', 'B0CD883YJW', 'B08P5HXJZS', 'B0B9ZTPCC6', 'B00MZCCH84',
+                'B09NBLTWRW', 'B0CD89X8KG', 'B00MZCCGXA', 'B0D45LMB42', 'B00UTK8224', 'B0B1V5MJV9', 'B0CDQGNYS6',
+                'B09YCSBBJK', 'B0BCL1V3T6', 'B07BFH455V', 'B09FXQMSNF', 'B089N5RDSZ', 'B09R4WZDJ8', 'B09H39Z257',
+                'B0CQYCSXY1', 'B0B778GH27', 'B07288S3QS', 'B086R79PBC', 'B0CJ9Y9N3K', 'B0B776W3XR', 'B09KH7FZW9',
+                'B01HQ4BGNM', 'B015MFNIQU', 'B08D6PK4HH', 'B0CFPF7TJ5', 'B0798BTVPR', 'B01CC6KVFS', 'B08SQFHJQY',
+                'B0B3LMJLVC', 'B095XF7W1G', 'B07Y5G8VHR', 'B07N7LHJ6V', 'B0CJ5TRH5F', 'B08GRNMKYM', 'B01C3SCKHW',
+                'B002NLHXQ8', 'B00OCACLQ0', 'B06XR9VDK8', 'B09YMYJGW5', 'B09BJQ8Y7N', 'B09BJQW53R', 'B08N5LTPWZ',
+                'B006J3Q18C', 'B07S1WJGQF', 'B06XDW8S94', 'B06XDYB7TZ', 'B0C8WMLZ78', 'B08WYPWXX6', 'B01LZ4IW8A',
+                'B07Z5M9M7M', 'B09X6BQCGM', 'B001S2PPT0', 'B01C3SCKI6', 'B07NLQ46M2', 'B01N2XBZ6W', 'B08M91FQW6',
+                'B07WFQYJYP', 'B00PGNMXQA', 'B0B2KSJBR4', 'B09JBJKRBZ', 'B00THOYRN6', 'B0076BNK30', 'B07WQ54BL8',
+                'B09HVBDKFY', 'B00DBL0NLQ', 'B013HLKB8Y', 'B0BRQSBJKG', 'B08MQBVFVW', 'B013D1BI9Y', 'B07KD3CMGS',
+                'B071PFFSKM', 'B00005NPOB', 'B07DFVF7M4', 'B07H4SFG4G', 'B00KAQX65A', 'B07KCZN72X', 'B002NEGTSI',
+                'B07GWF4T6Z', 'B00EFILVQU', 'B00X8MRBCW', 'B0777VG41C', 'B01KURGS9O', 'B01L74R85W', 'B07GSJQXRM',
+                'B00006I53X', 'B00K899B9Y', 'B077BWD2BB', 'B00NI3BZ5K', 'B00NGTN0Y0', 'B09YYY6P98', 'B00C94WIK0',
+                'B0CBQR21K3', 'B07HCP1JG3', 'B0B8PDHRWY', 'B0CDQZ4WJ6', 'B07HH1PVRZ', 'B07YX8Q62H', 'B0BL7X3KLV',
+                'B07RHW4D5P', 'B09ZBLV8TM', 'B07N9KDCGV', 'B0C5LNKYLP', 'B0CPQ44NB5', 'B0B8PD8TTP', 'B083K41K2S',
+                'B0BTTWH46K', 'B07MV3P7M8', 'B07C2Z21X5', 'B0BTTTH5G6', 'B08L614R6K', 'B01KURGS9E', 'B0CMV98DP2',
+                'B0CH1QCDPS', 'B07NSMJX2K', 'B0BLTDSVM2', 'B0CGTTVYGM', 'B086TTTZR5', 'B09DTHG54V', 'B08DCRHZZJ',
+                'B0BYQJJYF7', 'B0C4ZQWDGC', 'B0BN4Q6CTZ', 'B0CS4NMS53', 'B0BK21BS6Y', 'B0BL7ZVY78', 'B0BCLYBK1F',
+                'B0BDP1Q4NS', 'B0CBN8Y77Z', 'B06Y5ZCFHX', 'B0C5PM5YH6', 'B09GL1L694', 'B09FFTM3F6', 'B0BNJLSTQ4',
+                'B011PKJI2Y', 'B07QBD256Y', 'B07YXH2DLL', 'B07YX9DJ46', 'B0BN6XNJVQ', 'B0C4Q7ZBLS', 'B0C4Q71JBY',
+                'B09M7JMBKY', 'B0BG662VBB', 'B08PZHYWJS', 'B0CCSY7H62', 'B0073A4FM4', 'B091PNH6B9', 'B00PXLX2TC',
+                'B07JYLGDSL', 'B0CH3ZFR4K', 'B08WJZF45B', 'B08TDBZPVW', 'B08ZYY5PJP', 'B08JNN5CM7', 'B08WJW12JW',
+                'B07N95QQX5', 'B09TQ7NH72', 'B07JYPCQ96', 'B00NIHDM0C', 'B00NIHCGWW', 'B00NIHDT4Q', 'B08L5Z4355',
+                'B0BXZW1RMM', 'B0BK1YPRNN', 'B0C2JGVJ4C', 'B0CCBXGG37', 'B08BW8H44J', 'B084BKKX8T', 'B06Y5RTN1T',
+                'B07RC8HPHL', 'B01AA093UW', 'B0CBSKP21N', 'B0C5PGRP7V', 'B083K41SKC', 'B0BL7VMPDT', 'B0BWV8D6S6',
+                'B08C6CWVNZ', 'B07WFQYDD5', 'B084P1VZWM', 'B0B27KKNZV', 'B09BBLH4SG', 'B0CMC3TKYG', 'B0945R3K6G',
+                'B0C83LZDZ1', 'B0BTTV6CT1', 'B07QFFNCG4', 'B0BTTVW3TX', 'B0CM9WR78F', 'B07B43WPVK', 'B0B8PD95K3',
+                'B0BPMB8JHG', 'B0C15KZKCW', 'B0B2KV35NX', 'B07YXH9LXV', 'B07DGLSJNN', 'B07KD1P5ZY', 'B083K3C5P2',
+                'B07KD472S9', 'B0037KM0XA', 'B00007GQLS', 'B000I1YIDQ', 'B07H489XDQ', 'B01DLMD5O6', 'B09JVBB36L',
+                'B001GCVA0U', 'B09HMVJL47', 'B07DFSNT1D', 'B081L5HJBP', 'B09FFV6WF5', 'B0C8QL89L5', 'B073V6HXZZ',
+                'B00NLBGD1A', 'B07KD37RMD', 'B07KD3Y6SL', 'B0BL1XF79J', 'B00KAQX66Y', 'B0B2KTYBPM', 'B084BKXDLD',
+                'B06WLH9D44', 'B013TFOT72', 'B01LXTX4WY', 'B00007GQLU', 'B0CMDFX1G9', 'B00PF39PEY', 'B08QM6FCV9',
+                'B09X6F68SJ', 'B0C6XTB8TG', 'B08ZYGFG8F', 'B0BTWKS836', 'B0C69YJGGY', 'B08VFH2VSP', 'B09ZK4LN92',
+                'B09MSNVK6K', 'B0BSVQ12MS', 'B0BY9FPSSQ', 'B09ZKLP7JZ', 'B08PF3PMGN', 'B09ZQ3QN8K', 'B00COJO7WC',
+                'B0BWJN495W', 'B09Z7KGTVW', 'B0C8VKH1ZH', 'B0BZYXDG3K', 'B0C5GCYZS5', 'B0CD1JTBSC', 'B0962LK37V',
+                'B08HQBCHCD', 'B01M0KZIE6', 'B072W936QV', 'B0C5R3HVPC', 'B005CSLWGG', 'B0BJJ4TTRW', 'B00FJP5ZME',
+                'B00GNHOFQO', 'B0CNDBT3NX', 'B0D5XRY91N', 'B0BSLWGFXD', 'B086KJBKDW', 'B0CQBL6RJ6', 'B0CG7NVGQ2',
+                'B0BYQ7Q6SB', 'B08C68F2DX', 'B0BTQSVVJH', 'B0BMPR522C', 'B0101RW3QK', 'B0C6C3ZYD3', 'B07ZQQ7HMV',
+                'B09DTK6KMH', 'B01L8U5924', 'B08DRXSMWD', 'B0CHTHLVHS', 'B01D40AUFW', 'B0BTTW292G', 'B075KTJJPC',
+                'B07ZRZLHH4', 'B07FVXZ3R1', 'B07FXXVC74', 'B0B2KV6D97', 'B0BTTVH7VF', 'B0CJDHSFTN', 'B09L3784KG',
+                'B0B2KSD7WW', 'B075VCWMVY', 'B0CL113992', 'B09JZT6YK5', 'B0CN1PCH1Y', 'B0B46QS9GZ', 'B01M02QGGA',
+                'B00009XVCZ', 'B00K8942SO', 'B0CHDTW3NM', 'B0C7SV3QHB', 'B08GL4QSFH', 'B0C6N1TQ9B', 'B0BZM2QQKY',
+                'B0B4QV9YV6', 'B01N0YGEQT', 'B0BCXTVXMC', 'B0CDVH5N9G', 'B09P6821X6', 'B08YP4TWKQ', 'B0B3Y3MMD7',
+                'B0787L2SLH', 'B0BKLQFFSF', 'B0C6KKF56F', 'B0BX5H4DC5', 'B0BJPDN443', 'B009724JZY', 'B0BJPXD39Q',
+                'B0BWPHBSJ7', 'B006D1NKFC', 'B0BDQMYRXK', 'B0BMXVPDGY', 'B0BWPT5DM3', 'B0B8QQH2QB', 'B07SV58VVY',
+                'B07C5MFN1Z', 'B00W0SFQ86', 'B09YMZYTRY', 'B0CKJ9H695', 'B0B52CDFVL', 'B0BCN6325Y', 'B0BCLWJMZ1',
+                'B0BDGCY7XN', 'B07DD14923', 'B0CGXZGSFH', 'B08WX7BMHB', 'B07WC4NNBM', 'B07N13ZY8Z', 'B07DGLL7BJ',
+                'B07QX5T3RP', 'B00JKUPRF4', 'B07SZXDN9X', 'B096B7933Y', 'B08J7FDF6G', 'B084QP747Q', 'B0C44CYR9T',
+                'B0037HPVHU', 'B00A35X6NU', 'B00OIZO626', 'B0040YEFKI', 'B0040X4OZU', 'B07H4F64XL', 'B06C802332',
+                'B06C802345', 'B06C802370', 'B06C802372', 'B09RQ5R1QV', 'B06C802344', 'B06C802353', 'B06C802356',
+                'B09RQ5Z7G4', 'B06C802346', 'B06C802337', 'B06C802333', 'B06C802350', 'B06C802335', 'B06C802351',
+                'B06C802343', 'B06C802373', 'B06C802334', 'B06C802358', 'B09RQ5BGXZ', 'B06C802354', 'B06C802361',
+                'B0BJZDZ59Q', 'B06C802349', 'B0C82B6774', 'B06C802359', 'B06C802338', 'B09RQ61D6Q', 'B06C802347',
+                'B0BJZCL85G', 'B0778QRT85', 'B06C802371', 'B0BRT27VT4', 'B06C802348', 'B0BJZ2ZDFV', 'B06C802342',
+                'B06C802336', 'B06C802352', 'B0CNS4YNYK', 'B06C802357', 'B06C802341', 'B0BJZMDQF8', 'B00940DHOS',
+                'B06C802355', 'B06C802360', 'B0CNS2M59G', 'B0BBXZDS6V', 'B079N2W185', 'B09TZYJ9F7', 'B06C802367',
+                'B087WHF5C7', 'B07WJJ14V9', 'B073BMLSN6', 'B014C0HDWG', 'B07Q8Q6QK9', 'B01N5JYXVI', 'B07H4LRRRQ',
+                'B009FQST76', 'B08K3P3978', 'B09S369772', 'B073X5XRX4', 'B000U9SBU2', 'B093XDX3JQ', 'B07H4CRLYF',
+                'B078XGS4TC', 'B07H4CR6Y9', 'B00O468PCG', 'B0CMCMFGXT', 'B06Y3N78TS', 'B011GF2Q7M', 'B06XV1YNSB',
+                'B08GCX1W1D', 'B07SV5C7W8', 'B000U9OFLG', 'B00NANC38G', 'B07XXQBGFX', 'B019QRX766', 'B00009XVDP',
+                'B091R4HCG4', 'B001TDL2O0', 'B001GNCWCE', 'B07H4RG6JJ', 'B0B69QZ1DJ', 'B0D5ZJ2XJ9', 'B09NLBL2F1',
+                'B000EW8074', 'B074VQ6SGM', 'B091RL6FL3', 'B0001G6U48', 'B0B69P2LJG', 'B07Z5M2MDJ', 'B07H4VNJHF',
+                'B09M62RJK2', 'B08C6Y8KS3', 'B08C73SG8N', 'B014EOML6S', 'B07RB7SHD7', 'B07YXBWK3W', 'B00A2BVBTG',
+                'B00CQGF8H6', 'B09TL8224F', 'B0C3498X6T', 'B09TL71BNG', 'B000V5K3FG', 'B001TDL2OA', 'B08C6Z5F2L',
+                'B01KURGS8U', 'B0046VZHYS', 'B08P3S6HR4', 'B005OCZOA0', 'B000GE403I', 'B01B87L6T2', 'B009YM8CH8',
+                'B0BN4D8GCH', 'B000JCBB7K', 'B091FYL57X', 'B00025XH8U', 'B000ZLV77E', 'B002RL8TS0', 'B004PEHFKU',
+                'B0749QMZ4Q', 'B0887W86TP', 'B017L4KYDU', 'B08WK1DP75', 'B008ZT8JCE', 'B003BQKGOA', 'B07L5T98DG',
+                'B006T5HOWC', 'B0046JJSCM', 'B0749QLHFG', 'B00OM0ASBK', 'B017L4KIXQ', 'B0D36D9TPX', 'B000AQDSMQ',
+                'B0002J4IX4', 'B0006NGVO0', 'B016P3E9VG', 'B07QQVFYZ1', 'B085FPSNJN', 'B01BDAB6C6', 'B003YM5KWO',
+                'B01NAVWRB1', 'B003BQKGPY', 'B09X56KQ3R', 'B000Z7JK72', 'B004PEHFLO', 'B0754KT32C', 'B00M0SVY5K',
+                'B003CLT4GA', 'B002A4DHU4', 'B001TE2MKW', 'B000ZLOGCC', 'B008ZT8DVQ', 'B000BQ79W0', 'B07ZM6KWS8',
+                'B009RUG8PK', 'B06C802322', 'B0B6QBSGC4', 'B00947AFUK', 'B004PEHFFU', 'B017L4KOBW', 'B09NZBRFSJ',
+                'B000U7B90I', 'B00MIXFBL0', 'B00OQUJ362', 'B07S63K5N9', 'B09SVN6J35', 'B00OY6718K', 'B09TQ5HVB3',
+                'B08C5NH1LR', 'B08PN6PLH2', 'B07SK9L5KT', 'B08Q5WXCVM', 'B08GYL58L4', 'B08F8HL7T7', 'B0B2RGXV27',
+                'B0BN4GKHJL', 'B00OY670QS', 'B0D1LFQXV6', 'B07N3FJ6PB', 'B00KCXMBES', 'B08BJ9V8F7', 'B07N3FDT3M',
+                'B0CSL83SYC', 'B07WRDLNQZ', 'B06C802327', 'B0C9F5YC5P', 'B07XFGVCKQ', 'B0797P22HY', 'B06C802323',
+                'B078PTM82R', 'B07HPDRG11', 'B08MVF1F5X', 'B0BT571JKW', 'B086653VSH', 'B00AM9SLVO', 'B0BN4J2WZR',
+                'B097FCMGFJ', 'B09B34V6GM', 'B09CWB2GRM', 'B0CSLDLKZJ', 'B00DFU9BRK', 'B093LFP3RD', 'B0CB6TLV5Z',
+                'B06C802324', 'B0B6YYPZY6', 'B07H4LGZ1C', 'B01A7Q0N9Y', 'B08PNNNB1X', 'B07QFR15LW', 'B07QJY1Q2N',
+                'B0D5ZJJNR2', 'B07DHW57CP', 'B09NYC6PCQ', 'B01AG4FB1W', 'B08DK4KC3N', 'B06C802378', 'B076LW6VTC',
+                'B08ZHV88JW', 'B0C3C9SBB2', 'B0716RHXRB', 'B0B6W6XPQB', 'B0B4DMV384', 'B014C118K8', 'B0711KZVN3',
+                'B0BX4QTVVY', 'B011LNQ7NS', 'B008NF8CEK', 'B0BQHJDD6X', 'B07H4LJVL4', 'B07P2CH43B', 'B06XV22DT2',
+                'B0D4GN3QLG', 'B07L3RM817', 'B0B72FC2QY', 'B07XZLNV4W', 'B0CKX6RSCH', 'B0C34GV9ZC', 'B090001550',
+                'B0CQ3PYP6X', 'B08DCJNTBX', 'B06C802363', 'B0B9F9KVWC', 'B06C802377', 'B07WHV3HXL', 'B01KURGS9Y',
+                'B0101S4BSM', 'B06C802328', 'B07PDJ3Y4N', 'B08BVXBG6J', 'B06C802374', 'B090001387', 'B07N9KP2HS',
+                'B0C5P59T9J', 'B082YW4VPM', 'B09883MWLL', 'B07H489ZP4', 'B0BF985W1S', 'B072MZCJKN', 'B0BTTVKVBW',
+                'B0018D1732', 'B00MHSCLSW', 'B004TGBWE4', 'B07H4G9ZKW', 'B0101SX48U', 'B06C802331', 'B096DHS1BF',
+                'B000V5P94Q', 'B00NI3C8A6', 'B06C802369', 'B002NEGTT2', 'B06C802330', 'B008UGMLWQ', 'B0BTTTHPXS',
+                'B01BUYJYOW', 'B09FFTB9V6', 'B07TPYK34N', 'B0002Y5WXE', 'B08M8QPS1V', 'B06C802368', 'B00CRU42OQ',
+                'B09RNBL1SV', 'B0CZRYDM8J', 'B01LEEY6CS', 'B097Z21LGH', 'B0BL7XX45D', 'B00009R6WO', 'B0002JETVU',
+                'B07W14LX76', 'B00OOIQ45Y', 'B0002TTN3Y', 'B09KMDYKDG', 'B09FW5F6R9', 'B003Y55WNS', 'B0002GYSNC',
+                'B0002M6WYO', 'B00E4XNJYI', 'B000ZLV5P8', 'B0002L9I6E', 'B002XOJMAA', 'B01INVJ6RU', 'B008ZT8OVU',
+                'B002A4KEDM', 'B00066NAQO', 'B010W6WESM', 'B09F634188', 'B00075ZTHM', 'B08W29CFHL', 'B09CP78H4V',
+                'B07V9PCCWG', 'B0012ILNK0', 'B001XWHACU', 'B017L4KWMS', 'B0010H82WA', 'B06C802321', 'B08X7KCCV7',
+                'B0015NRTC8', 'B003Y5D3CK', 'B007YCG0JM', 'B0006HB736', 'B06XT8L1TV', 'B008ZT7O7A', 'B08YBTM7K8',
+                'B004PEHFMI', 'B01EM70BE6', 'B0002PZ01C', 'B001XWIX62', 'B000G0GX5K', 'B00P07QDZE', 'B0CVLD37RJ',
+                'B003ZZV5SI', 'B003BQBKG8', 'B003Y5CZ9C', 'B09N8TTHBQ', 'B00OSY6Q5M', 'B01NA9OL98', 'B07K9MTZPP',
+                'B001XWBX1Y', 'B01INVSKAY', 'B0002JETTC', 'B001UDHGMQ', 'B07Q8Q6P54', 'B01C7A3W7S', 'B01CCL26GK',
+                'B07QQNLF19', 'B09HJTHH19', 'B073B2WHQY', 'B011T84GVA', 'B06C802339', 'B06C802340', 'B0CZSFCMM6',
+                'B0B775NSZK', 'B07RRP1NHY', 'B0CZSCM1J3', 'B0CSW5LB5L', 'B07FBB4DPB', 'B079LVCWBR', 'B071K62DZT',
+                'B098859BQ1', 'B084F4GM6Y', 'B06C802376', 'B0B27NSHB4', 'B01B6OTTIM', 'B08XWNCSZB', 'B0BXHYW2XS',
+                'B07YV8R6B1', 'B06C802375', 'B0BNJWHYDJ', 'B090001647', 'B06C802362', 'B09KHC4XCT', 'B08PMHLMW3',
+                'B06C802325', 'B09F6H5R8H', 'B0BGM5WRQ1', 'B08MQPFGJ1', 'B09RQ72911', 'B06C802329', 'B01KZ4XPCK',
+                'B074VPX4VD', 'B00T3ERXKE', 'B009P3XW4O', 'B0BL5FKJF7', 'B07C5QKNRV', 'B074VQ6SGK', 'B0CMDC61MZ',
+                'B0C66JMX91', 'B0002GZHQ4', 'B01LZ7UN44', 'B013TPZ2O6', 'B07BKMRJ1L', 'B0002U3S0M', 'B0002GYVZW',
+                'B07VFBK2XD', 'B0002OD7GS', 'B09MMC6MR6', 'B008LV09LA', 'B00QJUDA0W', 'B0002BBOOS', 'B00XWG2YBW',
+                'B01INVSNTW', 'B074FVLMJQ', 'B003ZZTOAY', 'B001TQ0RHU', 'B000T9HDC0', 'B008ZTAL0M', 'B0002YLBRK',
+                'B008ZT7NFI', 'B07T4HS6WN', 'B00ZCOPH1Q', 'B00GJW0JGI', 'B0B77VDC5R', 'B000ZLRT9O', 'B07THLHW8R',
+                'B002L0TK62', 'B08T9WR2L6', 'B0002KLM8W', 'B07FJP5NZQ', 'B00V66XWTI', 'B000ZLQ47M', 'B003ZZXLPS',
+                'B0C7XM221Y', 'B001CITVNQ', 'B08X945J6T', 'B00ON21P5U', 'B008ZT7OLQ', 'B01LYYYZBW', 'B00SLOJFJE',
+                'B00A7HKHWW', 'B07Z5M26QG', 'B008ZT7O3E', 'B06XT16Y35', 'B07QZ2XD1B', 'B07K3ZDDBX', 'B08G7B5P13',
+                'B01K1WU2H2', 'B01INVJ332', 'B01N3Z0IXN', 'B000UXIEPU', 'B0CT41QPF8', 'B0CZ4JX9JW', 'B08P2FH2M9',
+                'B0CPTLJ2MC', 'B0CJP4MQZ8', 'B06C802326', 'B08NCLXMSB', 'B0885633DW', 'B09P4RRFZY', 'B0CCGHK7B9',
+                'B0BDR29SWT', 'B07XZKRDLB', 'B0C2JKMMSW', 'B06C802364', 'B06C802365', 'B06C802366', 'B0948CG3KH',
+                'B0877ZBVPY', 'B0013AV2WQ', 'B09T6JPG27', 'B001TPX6VK', 'B0002PSCQW', 'B001M9YPOA', 'B07QR764QH', 
+                'B0D2JLJ73N', 'B08P4D86D7', 'B08B9CBMY2', 'B0115XR01C', 'B09P83WC6Q', 'B07P8N2792', 'B0CR9WX1ZW', 'B0CCDXCMYW', 'B09SVTFW4T', 'B0CG44TYFH', 'B0C9QB79QH', 'B0BN8CQ571', 'B015WD6YYU', 'B09QCTJ2DZ', 'B09QL53QYX', 'B07RP447DL', 'B08P3VQR6B', 'B09LX2LTD4', 'B0BN9SNZ19', 'B0D5QXY5JN', 'B0C3J45FCD', 'B0B8F5BYNG', 'B0B8F1ZDQM', 'B0B8F12WSV', 'B0B8F3G9VC', 'B0B8DZVQQ1', 'B0B8DYJXN3', 'B0B8DZTHRK',
+        'B0B8F2C3KB', 'B083RCR7GQ', 'B0CQ88V84S', 'B0CQ8727NP', 'B0CQ87HWWY', 'B0CQ89JFYY', 'B07MWHT1GZ',
+        'B0BBGRK7QL', 'B0CN9CMC9B', 'B0CN9FPBL6', 'B0B8YFY4Q1', 'B085NDDSG8', 'B0CTYJTQHH', 'B08ZQ45MCG',
+        'B0977Q3K8V', 'B016WEEK5S', 'B00FF3X374', 'B005FHWM4K', 'B084RCVK14', 'B08L5M374S', 'B008465KMU',
+        'B000EWW2T6', 'B001AGO9SW', 'B0CMC94TR1', 'B0CMC7SM4X', 'B0C62KRCNV', 'B0CCT5WYTN', 'B076H6XQBY',
+        'B0757R54WH', 'B09T3VLF2L', 'B0BGSB14H6', 'B0CNSM9X9C', 'B07X4GP8GZ', 'B00LYBQS7I', 'B09XBYL17Z',
+        'B09XGGGNDK', 'B009UZGIRU', 'B01MSHM6DU', 'B07SG75RQM', 'B07FLKVD7H', 'B0CK4YNBGQ', 'B09W372R59',
+        'B0C34T7PG7', 'B096YSQ3XL', 'B0CM9WSJKX', 'B085S7YFHY', 'B0C37SJG71', 'B08BX5KC48', 'B09613J26S',
+        'B07L41K54X', 'B0BSBVPWCV', 'B07DC3FF3F', 'B07X9F6NDX', 'B0BYFBVDQG', 'B08W8TRBQP', 'B00ED3389K',
+        'B08T21QT5K', 'B00JH3WJIC', 'B0CLH6NC9X', 'B0CPT9MJ5B', 'B0CPTC9W1T', 'B09M41627S', 'B0BLH7Q71T',
+        'B00FJWPSH4', 'B0CDFFVBBS', 'B0CH1WD2PG', 'B0BJVTX2HB', 'B0D3M7P3PP', 'B093LVKZP2', 'B09YXHR5XV',
+        'B09ZQRY7MP', 'B0D1Y41HL9', 'B0D2RCKGW7', 'B0979PLPZ4', 'B0D9Y6R7ZC', 'B0CHHLWDS2', 'B0D4YGP8JR',
+        'B0C8B76PVX', 'B0BB7C8F85', 'B0BG5JPX2B', 'B0BYZWFZ56', 'B09YCW1F95', 'B0B2PN9BXP', 'B0CHVGCBB2',
+        'B07HVX94PT'
+
+
+        ];
+
+
+                        // Si el ASIN está en la lista, multiplica el newPrice por 0,75
+                        if (in_array($asin, $asin_list)) {
+                                $newPrice = $newPrice * 1;
+                        }
+
+
+                        if ($packageWeight === "N/A" || $packageWeight == 0) {
+                                if ($newPrice > 200) {
+                                        $packageWeight = 20000; // Asignar 20000 si newPrice es mayor a 200
+                                }
+                        }
+
+
+                        if ($newPrice === "N/A" || $newPrice < 10 || $packageWeight === "N/A" || $packageWeight == 0) {
+                                echo json_encode([
+                                        'success' => false,
+                                        'error_message' => '<strong>Contactanos por WHATSAPP 📲💬</strong> +54 1169203190 o <strong>E-MAIL✉️</strong>  info@inovamusicnet.com y te confirmaremos el Precio Final 💵 a la brevedad ⏳.<br>' .
+                                                                           '<img src="https://www.inovamusicnet.com/wp-content/uploads/2023/04/WhatsApp_icon-1.png" alt="Contactar Whatsapp" id="contact-whatsapp" class="contact-icon">' .
+                                                                           '<img src="https://www.inovamusicnet.com/wp-content/uploads/2023/04/icono-correo-concepto-mensaje-correo-electronico-entrante-simbolo-o-notificacion-sms-dispositivos-electronicos-ilustracion-vectorial-plano_186332-11291-modified-1.png" alt="Contactar Mail" id="contact-mail" class="contact-icon"><br>' .
+                                                                           '<strong><i>Si Añadís al Carrito 🛒 se te cobrará un anticipo 💳 y luego te enviaremos el 💲 Precio Final 💰 al Mail registrado 💼🤝.</i></strong><br><br>'
+                                ]);
+                        } else {
+                                echo json_encode([
+                                        'success' => true,
+                                        'title' => $title,
+                                        'newPrice' => $newPrice,
+                                        'packageWeight' => $packageWeight,
+                                        'categoryTree' => json_encode($categoryTree)
+                                ]);
+                        }
+                } else {
+                        echo json_encode([
+                                'success' => false,
+                                'error_message' => '<strong>Contactanos por WHATSAPP 📲💬</strong> +54 1169203190 o <strong>E-MAIL✉️</strong>  info@inovamusicnet.com y te confirmaremos el Precio Final 💵 a la brevedad ⏳.<br>' .
+                                                                   '<img src="https://www.inovamusicnet.com/wp-content/uploads/2023/04/WhatsApp_icon-1.png" alt="Contactar Whatsapp" id="contact-whatsapp" class="contact-icon">' .
+                                                                   '<img src="https://www.inovamusicnet.com/wp-content/uploads/2023/04/icono-correo-concepto-mensaje-correo-electronico-entrante-simbolo-o-notificacion-sms-dispositivos-electronicos-ilustracion-vectorial-plano_186332-11291-modified-1.png" alt="Contactar Mail" id="contact-mail" class="contact-icon"><br>' .
+                                                                   '<strong><i>Si Añadís al Carrito 🛒 se te cobrará un anticipo 💳 y luego te enviaremos el 💲 Precio Final 💰 al Mail registrado 💼🤝.</i></strong><br><br>'
+                        ]);
+                }
+                die();
+        }
+
+
+        function add_contact_buttons_styles() {
+                ?>
+                <style>
+                        .contact-icon {
+                                display: inline-block;
+                                width: 40px;
+                                height: 40px;
+                                margin: 5px;
+                                cursor: pointer;
+                        }
+                </style>
+                <script type="text/javascript">
+                        (function($) {
+                                $(document).on('click', '#contact-mail', function() {
+                                        var productTitle = ''; // Obtén el título del producto según tu lógica
+                                        var productLink = window.location.href;
+                                        var emailMessage = 'mailto:info@inovamusicnet.com?subject=Consulta%20de%20Producto&body=LINK%20WEB:%20' + productLink + '%0D%0A%0D%0A' + 'Hola Quiero consultar por el Producto:%0D%0A%0D%0A' + productTitle;
+
+
+                                        window.open(emailMessage, '_blank');
+                                });
+
+
+                                $(document).on('click', '#contact-whatsapp', function() {
+                                        var productTitle = ''; // Obtén el título del producto según tu lógica
+                                        var productLink = window.location.href;
+                                        var whatsappMessage = 'https://api.whatsapp.com/send?phone=+541169203190&text=' + encodeURIComponent('LINK WEB: ' + productLink + ' ' + '_*Hola que tal? Quiero consultar por el Producto:*_ ' + ' *** ' + productTitle);
+
+
+                                        window.open(whatsappMessage, '_blank');
+                                });
+                        })(jQuery);
+                </script>
+                <?php
+        }
+        add_action('wp_footer', 'add_contact_buttons_styles');
+
+
+
+
+
+
+
+
+
+
+
+function actualizarPrecio(){
+            spin.style.display = msgLoad.style.display = 'block';
+
+            fetch(adminAJ,{
+                method :'POST',
+                headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                body   :'action=consultar_precioo&asin='+encodeURIComponent(asin)
+            })
+            .then(r=>r.json())
+            .then(r=>{
+                if(!r.success){throw new Error(r.error_message||'Error desconocido');}
+
+                const newPrice      = parseFloat(r.newPrice);
+                const packageWeight = parseFloat(r.packageWeight);
+                const categoryTree  = Array.isArray(r.categoryTree) ? r.categoryTree : [];
+
+/* ---------- CÁLCULO: elige el menor entre método actual y método RATIOKG ---------- */
+const specialOld = [13896617011,2642129011,193870011,1292110011,281052,3109924011,3017941];
+const specialNew = [172421,4943760011,11910405011,7161075011,7161091011,3350161,11608080011,172659,6427814011,294940,6469269011,16227128011,3443921,3347871,1292115011];
+
+const isOld = categoryTree.some(c=>specialOld.includes(c.catId));
+const isNew = categoryTree.some(c=>specialNew.includes(c.catId));
+
+const costoAdicional = newPrice/100>1000 ? (newPrice/100-1000)*1.01+1000 : newPrice/100;
+
+/* Método ACTUAL (por categorías) */
+let metodoActual;
+if (isOld){
+    metodoActual = (
+        (costoAdicional * RATIOC      * DOLAROPERATIVO * RECARGOTARJETA) +
+        ((packageWeight/1000) * FLETEXKG * DOLAROFICIAL   * RECARGOTARJETA) +
+        (COSTOFIJO * DOLAROFICIAL * RECARGOTARJETA)
+    );
+} else if (isNew){
+    metodoActual = (
+        (costoAdicional * RATIOP      * DOLAROPERATIVO * RECARGOTARJETA) +
+        ((packageWeight/1000) * FLETEXKG * DOLAROFICIAL   * RECARGOTARJETA) +
+        (COSTOFIJO * DOLAROFICIAL * RECARGOTARJETA)
+    );
+} else {
+    metodoActual = (
+        (costoAdicional * RATION      * DOLAROPERATIVO * RECARGOTARJETA) +
+        ((packageWeight/1000) * FLETEXKG * DOLAROFICIAL   * RECARGOTARJETA) +
+        (COSTOFIJO * DOLAROFICIAL * RECARGOTARJETA)
+    );
+}
+
+/* Método ALTERNATIVO (RATIOKG + DOLARINOVA) */
+const metodoKg = (
+    (costoAdicional * RATIOKG * DOLAROFICIAL * RECARGOTARJETA) +
+    ((packageWeight/1000) * 50 * DOLAROFICIAL * RECARGOTARJETA) +
+    (COSTOFIJO * DOLAROFICIAL * RECARGOTARJETA)
+);
+
+/* Elegimos el menor */
+let calculo = Math.min(metodoActual, metodoKg);
+/* Si querés saber cuál ganó, podés consultar (calculo === metodoKg) */
+
+                /* redondeo y formateo */
+                calculo = Math.floor(calculo);
+                const fmt = v=>v.toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+
+                /* precio principal */
+                const priceEl = document.querySelector('.price');
+                priceEl.textContent = '$'+fmt(calculo);
+                priceEl.classList.add('precio-actualizado');
+
+                /* etiqueta de precio + fecha */
+                const hoy = new Date();
+                const fecha = ⁠ ${hoy.getDate()}-${hoy.getMonth()+1}-${hoy.getFullYear()} ⁠;
+
+                const divPrecio = document.createElement('div');
+                divPrecio.className='precio-actualizado';
+                divPrecio.innerHTML = `
+                    <span style="font-weight:bold;">🏷️ 💲 PRECIO </span>
+                    con <span style="font-weight:bold;">💳 Tarjeta</span>
+                    Hasta <span style="font-weight:bold;">3 CUOTAS SIN INTERÉS!</span>
+                    📅 Hoy <span>${fecha}</span>
+                    <span style="color:#808080;font-size:10.5px;margin-left:8px;">
+                    (Incluye Impuestos y Costos de Importación a Argentina. No hay Gastos Adicionales)</span>`;
+                priceEl.before(divPrecio);
+
+                /* Transferencia / efectivo */
+                const calcTransf   = Math.floor(calculo*DESCTRANSFERENCIA);
+                const calcTransfUS = Math.floor(calcTransf/DOLARINOVA);
+                const calcCashUS   = Math.floor(calculo*DESCEFECTIVO/DOLARINOVA);
+
+                const divTransf = document.createElement('div');
+                divTransf.className='precio-transferencia';
+                divTransf.innerHTML = `
+                    Precio <strong>🏦 Transferencia Bancaria:</strong>
+                    <span style="color:red;font-weight:bold;font-size:28px;">$${fmt(calcTransf)}</span>
+                    <span style="color:darkgreen;font-weight:bold;"> (o USD ${fmt(calcTransfUS)})</span><br>
+                    Precio <strong>💵 Efectivo:</strong>
+                    <span style="color:#00BFFF;font-weight:bold;font-size:x-large;">USD ${fmt(calcCashUS)}</span><br>
+                    Costo 🚀 Envío Express:
+                    <strong style="color:#800080;">$${fmt(Math.round(calculo*0.1))}</strong> (Opcional)`;
+                priceEl.after(divTransf);
+
+                /* mensaje «mejor precio» */
+                const divMsg = document.createElement('div');
+                divMsg.id='mensaje-mejor-precio';
+                divMsg.style=⁠ margin-top:10px;padding:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:5px;text-align:center; ⁠;
+                divMsg.innerHTML = '<strong style="color:#0073aa;">¿Lo viste más barato en otro sitio?<br>¡Contáctanos y te ofreceremos un mejor precio!</strong>';
+                divTransf.after(divMsg);
+
+                /* campo oculto para carrito */
+                const form = document.querySelector('form.cart');
+                if (form){
+                    const inp = document.createElement('input');
+                    inp.type='hidden'; inp.name='nuevo_precio'; inp.value=calculo;
+                    form.appendChild(inp);
+                }
+
+            })
+            .catch(e=>{
+                const priceEl = document.querySelector('.price');
+                if (!priceEl) return;
+                const err = document.createElement('div');
+                err.className='error-message';
+                err.innerHTML=e.message;
+                priceEl.before(err);
+                priceEl.style.display='none';
+            })
+            .finally(()=>{
+                spin.style.display = msgLoad.style.display = 'none';
+            });
+        }
+    })();
+    </script><?php
+}
+
+/* 4) Guardar el nuevo precio al agregar el producto al carrito */
+add_filter('woocommerce_add_cart_item_data', 'agregar_nuevo_precio_al_carrito', 10, 2);
+function agregar_nuevo_precio_al_carrito($cart_item_data, $product_id) {
+    if (isset($_POST['nuevo_precio'])) {
+        $cart_item_data['nuevo_precio'] = floatval($_POST['nuevo_precio']);
+    }
+    return $cart_item_data;
+}
+
+/* 5) Actualizar el precio en el carrito antes de calcular totales */
+add_action('woocommerce_before_calculate_totals', 'custom_price_to_cart_item', 20);
+function custom_price_to_cart_item($cart) {
+    if (is_admin() && !defined('DOING_AJAX')) {
+        return;
+    }
+    foreach ($cart->get_cart() as $cart_item) {
+        if (isset($cart_item['nuevo_precio'])) {
+            $nuevo_precio = $cart_item['nuevo_precio'];
+            $cart_item['data']->set_price($nuevo_precio);
+        }
+    }
+}
+
+/* 6) Verificar si todos los productos en el carrito son "a pedido" para aplicar descuentos */
+function checar_titulo_productos() {
+    foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+        $product = $cart_item['data'];
+        $title = $product->get_title();
+        
+        if (stripos($title, 'a pedido') === false) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* 7) Aplicar descuentos según método de pago (para productos "a pedido") */
+add_action('woocommerce_cart_calculate_fees', 'descuento_efectivo_transferencia', 20, 1);
+function descuento_efectivo_transferencia($cart) {
+    if ( is_admin() && ! defined('DOING_AJAX') ) {
+        return;
+    }
+    
+    // Eliminamos fees anteriores para que no se acumulen
+    foreach( $cart->get_fees() as $fee ) {
+        if( 'Descuento por efectivo o transferencia' === $fee->name ) {
+            $cart->remove_fee($fee->id);
+        }
+    }
+
+    // Verificamos el método de pago seleccionado
+    $metodo_pago = WC()->session->get('chosen_payment_method');
+    
+    // Verificamos los títulos de los productos
+    $titulos_validos = checar_titulo_productos();
+
+    if ( $titulos_validos ) {
+
+        if ( $metodo_pago == 'bacs' ) {
+            // Descuento 10%
+            $descuento = floor($cart->subtotal * 0.09091) + 1;
+            $cart->add_fee('Descuento por Transferencia (10%)', -$descuento);
+
+        } elseif ( $metodo_pago == 'cop' ) {
+            // Descuento 15%
+            $descuento = floor($cart->subtotal * 0.13699) + 1;
+            $cart->add_fee('Descuento por Efectivo (15%)', -$descuento);
+        }
+    }
+}

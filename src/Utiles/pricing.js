@@ -1,19 +1,25 @@
 const KeepaConfigService = require("./KeepaConfigService");
+const DEBUG = process.env.PRICE_DEBUG === "1" || process.env.PRICE_DEBUG === "true";
 
 async function calcularPrecio({ newPrice, packageWeight, categoryTree }) {
   const config = await KeepaConfigService.obtenerConfiguracion();
-  console.log("configKeepa", config);
+  if (DEBUG) {
+    console.log("[pricing.calcularPrecio] inputs:", { newPrice, packageWeight, categoryTreeLen: Array.isArray(categoryTree) ? categoryTree.length : null });
+    console.log("[pricing.calcularPrecio] config:", config);
+  }
 
   const specialOld = [13896617011, 2642129011, 193870011];
   const specialNew = [172421, 4943760011, 11910405011];
 
   const isOld = categoryTree.some((c) => specialOld.includes(c.catId));
   const isNew = categoryTree.some((c) => specialNew.includes(c.catId));
+  if (DEBUG) console.log("[pricing.calcularPrecio] isOld/isNew:", { isOld, isNew });
 
   const costoAdicional =
     newPrice / 100 > 1000
       ? (newPrice / 100 - 1000) * 1.01 + 1000
       : newPrice / 100;
+  if (DEBUG) console.log("[pricing.calcularPrecio] costoAdicional:", costoAdicional);
 
   const ratio = isOld ? config.RATIOC : isNew ? config.RATIOP : config.RATION;
 
@@ -24,10 +30,18 @@ async function calcularPrecio({ newPrice, packageWeight, categoryTree }) {
       config.DOLAROFICIAL *
       config.RECARGOTARJETA +
     config.COSTOFIJO * config.DOLAROFICIAL * config.RECARGOTARJETA;
+  if (DEBUG) console.log("[pricing.calcularPrecio] metodoActual unico ratio:", { ratio, calculo });
 
   const transferencia = Math.floor(calculo * config.DESCTRANSFERENCIA);
 
   calculo = Math.floor(calculo);
+  if (DEBUG) console.log("[pricing.calcularPrecio] resultados:", {
+    tarjeta: calculo,
+    transferencia,
+    transferenciaUSD: Math.floor(transferencia / config.DOLARINOVA),
+    efectivoUSD: Math.floor((calculo * config.DESCEFECTIVO) / config.DOLARINOVA),
+    express: Math.floor(calculo * 0.1),
+  });
   return {
     tarjeta: calculo,
     transferencia,
@@ -45,7 +59,10 @@ async function calcularPrecioNuevoMetodo({
   categoryTree,
 }) {
   const config = await KeepaConfigService.obtenerConfiguracion();
-  console.log("configKeepa Nuevo Método", config);
+  if (DEBUG) {
+    console.log("[pricing.calcularPrecioNuevoMetodo] inputs:", { newPrice, packageWeight, categoryTreeLen: Array.isArray(categoryTree) ? categoryTree.length : null });
+    console.log("[pricing.calcularPrecioNuevoMetodo] config:", config);
+  }
 
   // Validar que las variables de configuración existan
   if (!config.RATIOKG) {
@@ -67,11 +84,13 @@ async function calcularPrecioNuevoMetodo({
 
   const isOld = categoryTree.some((c) => specialOld.includes(c.catId));
   const isNew = categoryTree.some((c) => specialNew.includes(c.catId));
+  if (DEBUG) console.log("[pricing.calcularPrecioNuevoMetodo] isOld/isNew:", { isOld, isNew, specialOldLen: specialOld.length, specialNewLen: specialNew.length });
 
   const costoAdicional =
     newPrice / 100 > 1000
       ? (newPrice / 100 - 1000) * 1.01 + 1000
       : newPrice / 100;
+  if (DEBUG) console.log("[pricing.calcularPrecioNuevoMetodo] costoAdicional:", costoAdicional);
 
   // Validar que los valores no sean NaN
   if (isNaN(costoAdicional) || isNaN(packageWeight)) {
@@ -143,6 +162,7 @@ async function calcularPrecioNuevoMetodo({
         config.RECARGOTARJETA +
       config.COSTOFIJO * config.DOLAROFICIAL * config.RECARGOTARJETA;
   }
+  if (DEBUG) console.log("[pricing.calcularPrecioNuevoMetodo] metodoActual:", metodoActual);
 
   // Método ALTERNATIVO (RATIOKG + DOLARINOVA)
   const metodoKg =
@@ -152,14 +172,23 @@ async function calcularPrecioNuevoMetodo({
       config.RECARGOTARJETA +
     (packageWeight / 1000) * 50 * config.DOLAROFICIAL * config.RECARGOTARJETA +
     config.COSTOFIJO * config.DOLAROFICIAL * config.RECARGOTARJETA;
+  if (DEBUG) console.log("[pricing.calcularPrecioNuevoMetodo] metodoKg:", metodoKg);
 
   // Elegimos el menor
   let calculo = Math.min(metodoActual, metodoKg);
   const usoMetodoKg = calculo === metodoKg;
+  if (DEBUG) console.log("[pricing.calcularPrecioNuevoMetodo] min/metodo usado:", { calculo, usoMetodoKg });
 
   const transferencia = Math.floor(calculo * config.DESCTRANSFERENCIA);
 
   calculo = Math.floor(calculo);
+  if (DEBUG) console.log("[pricing.calcularPrecioNuevoMetodo] resultados:", {
+    tarjeta: calculo,
+    transferencia,
+    transferenciaUSD: Math.floor(transferencia / config.DOLARINOVA),
+    efectivoUSD: Math.floor((calculo * config.DESCEFECTIVO) / config.DOLARINOVA),
+    express: Math.floor(calculo * 0.1)
+  });
 
   return {
     tarjeta: calculo,

@@ -472,7 +472,6 @@ async function scrapeMeliPrices(
     };
   }
 
-  console.log("meliResults antes de todos los filtros:", meliResults.results);
 
   meliResults.results = meliResults.results.filter((item) => {
     return (
