@@ -175,6 +175,9 @@ async function calcularPrecioNuevoMetodo({
   if (DEBUG) console.log("[pricing.calcularPrecioNuevoMetodo] metodoKg:", metodoKg);
 
   // Elegimos el menor
+  console.log("metodoActual", metodoActual);
+  console.log("metodoKg", metodoKg);
+  console.log('isOld', isOld);
   let calculo = Math.min(metodoActual, metodoKg);
   const usoMetodoKg = calculo === metodoKg;
   if (DEBUG) console.log("[pricing.calcularPrecioNuevoMetodo] min/metodo usado:", { calculo, usoMetodoKg });
