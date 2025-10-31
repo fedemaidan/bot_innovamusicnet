@@ -35,13 +35,14 @@ async function obtenerPrecioKeepa(asin) {
       };
     }
 
-    let newPrice =
-      (product.csv?.[1]?.slice(-1)[0] ?? product.csv?.[0]?.slice(-1)[0]) || 0;
+    let lastCsv1 = Array.isArray(product?.csv?.[1]) ? product.csv[1].slice(-1)[0] : null;
+    let lastCsv0 = Array.isArray(product?.csv?.[0]) ? product.csv[0].slice(-1)[0] : null;
+
+    let newPrice = (lastCsv1 !== 0 && lastCsv1 != null) ? lastCsv1 : (lastCsv0 ?? 0);
     let packageWeight = product.packageWeight || product.itemWeight || 0;
 
     if (asin_list.includes(asinClean)) {
-      newPrice = newPrice * 0.92;
-      if (DEBUG) console.log("[keepaRoutes.obtenerPrecioKeepa] asin in discount list -> newPrice *= 0.92:", newPrice);
+      newPrice = newPrice * 1.0; 
     }
 
     if (!packageWeight || packageWeight === "N/A" || packageWeight === 0) {
